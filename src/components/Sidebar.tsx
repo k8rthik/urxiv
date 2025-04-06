@@ -1,9 +1,9 @@
 import React from "react";
-import { Block } from "../types";
+import { FileText, Users, Blocks } from "lucide-react";
 
 interface SidebarProps {
-  view: "files" | "channel";
-  setView: (view: "files" | "channel") => void;
+  view: "files" | "channels" | "channel";
+  setView: (view: "files" | "channels" | "channel") => void;
   filter: "all" | "pdf" | "epub" | "code" | "text";
   setFilter: (filter: "all" | "pdf" | "epub" | "code" | "text") => void;
   fileCounts: {
@@ -30,11 +30,26 @@ const Sidebar: React.FC<SidebarProps> = ({
         View
       </div>
       <ul className="text-sm">
-        <li className="px-6 py-1.5 text-zinc-400 hover:text-white">
-          <button className="w-full text-left">Channels</button>
+        <li
+          className={`px-6 py-1.5 flex items-center gap-2 ${
+            view === "channels"
+              ? "text-white"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <button
+            className="w-full text-left flex items-center gap-2"
+            onClick={() => setView("channels")}
+          >
+            <Users size={16} />
+            <span>Channels</span>
+          </button>
         </li>
         <li className="px-6 py-1.5 text-zinc-400 hover:text-white">
-          <button className="w-full text-left">Blocks</button>
+          <button className="w-full text-left flex items-center gap-2">
+            <Blocks size={16} />
+            <span>Blocks</span>
+          </button>
         </li>
         <li
           className={`px-6 py-1.5 flex items-center gap-2 ${
@@ -42,9 +57,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           }`}
         >
           <button
-            className="w-full text-left flex items-center"
+            className="w-full text-left flex items-center gap-2"
             onClick={() => setView("files")}
           >
+            <FileText size={16} />
             <span>Files</span>
           </button>
         </li>

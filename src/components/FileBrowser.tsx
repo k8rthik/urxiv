@@ -67,47 +67,45 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ files }) => {
   return (
     <div>
       {/* File list */}
-      <div className="p-1">
-        {filteredBySearchFiles.length === 0 ? (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-zinc-500 text-sm">
-              {files.length === 0
-                ? "No files have been indexed. Check your workspace directory."
-                : "No files match your current filters."}
-            </p>
-          </div>
-        ) : (
-          <div className="w-full">
-            {filteredBySearchFiles.map((file) => (
-              <div
-                key={file.id}
-                className="border-b border-zinc-800 hover:bg-zinc-900/30 transition-colors cursor-pointer"
-                onClick={() => handleOpenFile(file.content.full_path)}
-              >
-                <div className="px-4 py-3 flex items-center gap-3">
-                  {getFileIcon(file.content.file_type)}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium truncate">
-                      {file.content.filename}
-                    </h3>
-                    <p className="text-xs text-zinc-500 mt-0.5 truncate">
-                      {file.content.path}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 text-zinc-500">
-                    <span className="text-xs uppercase">
-                      {file.content.file_type}
-                    </span>
-                    <span className="text-xs">
-                      {format(new Date(file.created_at), "MMM d, yyyy")}
-                    </span>
-                  </div>
+      {filteredBySearchFiles.length === 0 ? (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-zinc-500 text-sm">
+            {files.length === 0
+              ? "No files have been indexed. Check your workspace directory."
+              : "No files match your current filters."}
+          </p>
+        </div>
+      ) : (
+        <div className="w-full">
+          {filteredBySearchFiles.map((file) => (
+            <div
+              key={file.id}
+              className="border-b border-zinc-800 hover:bg-zinc-900/30 transition-colors cursor-pointer"
+              onClick={() => handleOpenFile(file.content.full_path)}
+            >
+              <div className="px-4 py-3 flex items-center gap-3">
+                {getFileIcon(file.content.file_type)}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium truncate">
+                    {file.content.filename}
+                  </h3>
+                  <p className="text-xs text-zinc-500 mt-0.5 truncate">
+                    {file.content.path}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 text-zinc-500">
+                  <span className="text-xs uppercase">
+                    {file.content.file_type}
+                  </span>
+                  <span className="text-xs">
+                    {format(new Date(file.created_at), "MMM d, yyyy")}
+                  </span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

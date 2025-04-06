@@ -5,6 +5,7 @@ import ChannelView from "./ChannelView";
 import { Block, isChannelBlock } from "../types";
 import NewChannel from "./NewChannel";
 import FileBrowser from "./FileBrowser";
+import ChannelBrowser from "./ChannelBrowser";
 import Sidebar from "./Sidebar";
 
 interface MainLayoutProps {
@@ -20,7 +21,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
     null,
   );
   const [showNewChannelForm, setShowNewChannelForm] = useState(false);
-  const [view, setView] = useState<"files" | "channel">("files");
+  const [view, setView] = useState<"files" | "channels" | "channel">("files");
   const [filter, setFilter] = useState<
     "all" | "pdf" | "epub" | "code" | "text"
   >("all");
@@ -62,7 +63,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
   };
 
   const handleChannelCreated = (newChannel: Block) => {
-    setChannels([...channels, newChannel]);
+    loadChannels(); // Reload channels to ensure we have the latest data
     setSelectedChannelId(newChannel.id);
     setView("channel");
   };
@@ -98,6 +99,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
     });
   }, [files, filter]);
 
+  const handleChannelUpdated = () => {
+    loadChannels();
+    // If the channel was deleted, go back to channels view
+    if (view === "channel") {
+      setView("channels");
+      setSelectedChannelId(null);
+    }
+  };
+
+  const handleViewChange = (newView: "files" | "channels" | "channel") => {
+    setView(newView);
+    // If switching away from channel view, clear the selected channel
+    if (newView !== "channel") {
+      setSelectedChannelId(null);
+    }
+  };
+
+  // Toggle new channel form
+  const toggleNewChannelForm = () => {
+    setShowNewChannelForm(!showNewChannelForm);
+  };
+
   return (
     <div className="px-5 bg-black text-white flex flex-col">
       {/* Top Navigation Bar */}
@@ -105,7 +128,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
         <div className="py-3 w-full flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setView("files")}
+              onClick={() => handleViewChange("files")}
               className="text-xl font-bold"
             >
               urXiv
@@ -117,7 +140,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
             </button>
             <button
               className="px-2 py-1 bg-[#1A1A1A] border border-transparent hover:border-white text-xs flex items-center gap-1"
-              onClick={() => setShowNewChannelForm(true)}
+              onClick={toggleNewChannelForm}
             >
               New channel <Plus size={14} />
             </button>
@@ -130,10 +153,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
         {/* Sidebar and Content */}
         <div className="flex flex-1">
           {/* Sidebar */}
-          <div class="h-lvh">
+          <div className="h-lvh">
             <Sidebar
               view={view}
-              setView={setView}
+              setView={handleViewChange}
               filter={filter}
               setFilter={setFilter}
               fileCounts={fileCounts}
@@ -145,10 +168,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
           <div className="flex-1 overflow-auto">
             {view === "files" ? (
               <FileBrowser files={filteredFiles} />
+            ) : view === "channels" ? (
+              <ChannelBrowser onChannelClick={handleChannelClick} />
             ) : selectedChannelId ? (
               <ChannelView
                 channelId={selectedChannelId}
-                onChannelUpdated={loadChannels}
+                onChannelUpdated={handleChannelUpdated}
               />
             ) : (
               <div className="p-8 text-center">
@@ -163,9 +188,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
 
       {/* New Channel Modal */}
       {showNewChannelForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-black border border-zinc-800 p-6 max-w-md w-full">
-            <h2 className="text-xl font-medium mb-4">Create New Channel</h2>
+        <div className="fixed inset-0 backdrop-blur-lg flex items-center justify-center z-50 p-4">
+          <div className="bg-black border border-zinc-800 p-6 max-w-md w-full shadow-[0_0_20px_rgba(255,255,255,0.15)]">
             <NewChannel
               onChannelCreated={handleChannelCreated}
               onCancel={() => setShowNewChannelForm(false)}
