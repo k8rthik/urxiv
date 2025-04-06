@@ -1,51 +1,56 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import React, { useEffect, useState } from "react";
+import { useTauri } from "./context/TauriContext";
+import WelcomePage from "./components/WelcomePage";
+import MainLayout from "./components/MainLayout";
+import { Block } from "./types";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+const App: React.FC = () => {
+  const { isReady, isLoading, hasWorkspace, indexWorkspace } = useTauri();
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+  const [files, setFiles] = useState<Block[]>([]);
+  const [initializingWorkspace, setInitializingWorkspace] = useState(false);
+
+  useEffect(() => {
+    // If workspace is selected, index files
+    if (isReady && hasWorkspace) {
+      initializeWorkspace();
+    }
+  }, [isReady, hasWorkspace, indexWorkspace]);
+
+  const initializeWorkspace = async () => {
+    setInitializingWorkspace(true);
+    try {
+      const indexedFiles = await indexWorkspace();
+      setFiles(indexedFiles);
+    } catch (error) {
+      console.error("Error initializing workspace:", error);
+    } finally {
+      setInitializingWorkspace(false);
+    }
+  };
+
+  if (isLoading || initializingWorkspace) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold mb-4">Loading...</h2>
+          <p className="text-gray-400">
+            {initializingWorkspace
+              ? "Indexing your workspace..."
+              : "Checking workspace status..."}
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+  // If no workspace is selected, show welcome page
+  if (!hasWorkspace) {
+    return <WelcomePage />;
+  }
 
-      <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
-  );
-}
+  // Otherwise, show main layout
+  return <MainLayout initialFiles={files} />;
+};
 
 export default App;
