@@ -238,26 +238,26 @@ const ChannelView: React.FC<ChannelViewProps> = ({
               type="text"
               value={editedTitle}
               onChange={(e) => setEditedTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-sm text-xl font-medium focus:outline-none focus:border-zinc-500"
+              className="w-full bg-transparent border border-zinc-800 outline-none text-xl font-medium px-3 py-2 focus:border-zinc-600"
               placeholder="Channel title"
             />
             <textarea
               value={editedDescription}
               onChange={(e) => setEditedDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-sm text-sm focus:outline-none focus:border-zinc-500"
+              className="w-full bg-transparent border border-zinc-800 outline-none text-sm px-3 py-2 focus:border-zinc-600"
               placeholder="Channel description"
               rows={3}
             />
             <div className="flex gap-2">
               <button
                 onClick={handleSaveChanges}
-                className="flex items-center gap-1 px-3 py-1.5 bg-white text-black rounded-sm text-sm font-medium"
+                className="px-3 py-1.5 bg-white text-black text-xs font-medium flex items-center gap-1"
               >
                 <Save size={14} /> Save
               </button>
               <button
                 onClick={handleCancelEdit}
-                className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 text-white rounded-sm text-sm"
+                className="px-3 py-1.5 border border-zinc-800 text-white text-xs flex items-center gap-1 hover:border-zinc-600"
               >
                 <X size={14} /> Cancel
               </button>
@@ -265,50 +265,52 @@ const ChannelView: React.FC<ChannelViewProps> = ({
           </div>
         ) : (
           <div>
-            <div className="flex justify-between mb-2">
-              <h1 className="text-2xl font-medium">
+            <div className="flex justify-between items-center mb-2">
+              <h1 className="text-xl font-medium">
                 {channel.content.title || "Untitled Channel"}
               </h1>
               <div className="flex gap-2">
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-sm text-sm"
+                  className="px-3 py-1.5 text-xs border border-zinc-800 hover:border-zinc-600 flex items-center gap-1"
                 >
                   <Pencil size={14} /> Edit
                 </button>
                 <button
                   onClick={handleDeleteChannel}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-red-900 hover:bg-red-800 rounded-sm text-sm"
+                  className="px-3 py-1.5 text-xs border border-zinc-800 hover:border-red-800 text-red-500 flex items-center gap-1"
                 >
                   <X size={14} /> Delete
                 </button>
               </div>
             </div>
             {channel.content.description && (
-              <p className="text-zinc-400">{channel.content.description}</p>
+              <p className="text-zinc-400 text-sm">
+                {channel.content.description}
+              </p>
             )}
           </div>
         )}
       </div>
 
-      <div className="mb-6 flex justify-between items-center">
-        <h2 className="text-lg font-medium">Files</h2>
+      <div className="mb-6 flex justify-between items-center border-b border-zinc-800 pb-3">
+        <h2 className="text-sm font-medium">Blocks</h2>
         <button
           onClick={openAddFilesModal}
-          className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-sm text-sm"
+          className="flex items-center gap-1 px-3 py-1.5 text-xs border border-zinc-800 hover:border-zinc-600"
         >
           <Plus size={14} /> Add Files
         </button>
       </div>
 
       {blocks.length === 0 ? (
-        <div className="text-center p-8 border border-zinc-800 rounded-md">
-          <p className="text-zinc-400 mb-4">This channel is empty</p>
+        <div className="text-center p-8 border border-zinc-800">
+          <p className="text-zinc-400 mb-4 text-sm">This channel is empty</p>
           <button
             onClick={openAddFilesModal}
-            className="px-4 py-2 bg-white text-black rounded-sm text-sm font-medium"
+            className="px-4 py-2 bg-white text-black text-xs font-medium"
           >
-            Add your first file
+            Add your first block
           </button>
         </div>
       ) : (
@@ -316,35 +318,39 @@ const ChannelView: React.FC<ChannelViewProps> = ({
           {blocks.map((block) => (
             <div
               key={block.id}
-              className="border border-zinc-800 rounded-md overflow-hidden hover:border-zinc-700 transition-colors group"
+              className="border border-zinc-800 overflow-hidden group relative aspect-square"
             >
               <div
-                className="p-4 cursor-pointer"
+                className="p-4 h-full w-full cursor-pointer flex flex-col"
                 onClick={() => handleOpenFile(block.content.full_path)}
               >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-zinc-800 rounded-md">
+                <div className="flex items-start gap-2 mb-2">
+                  <div className="p-2 bg-zinc-900">
                     {getFileIcon(block.content.file_type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium mb-1 truncate">
+                    <h3 className="font-medium text-sm mb-1 truncate">
                       {block.content.filename}
                     </h3>
-                    <p className="text-xs text-zinc-400 truncate">
+                    <p className="text-xs text-zinc-500 truncate">
                       {block.content.path}
                     </p>
                   </div>
                 </div>
+                <div className="flex-grow"></div>
+                <div className="text-xs text-zinc-500 flex justify-between items-center">
+                  <span>{block.content.file_type.toUpperCase()}</span>
+                </div>
               </div>
-              <div className="bg-zinc-900 px-4 py-2 text-xs text-zinc-500 flex justify-between items-center">
-                <span>{block.content.file_type.toUpperCase()}</span>
-                <button
-                  onClick={() => removeFileFromChannel(block.id)}
-                  className="text-zinc-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  Remove
-                </button>
-              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeFileFromChannel(block.id);
+                }}
+                className="absolute top-2 right-2 text-zinc-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X size={16} />
+              </button>
             </div>
           ))}
         </div>
@@ -352,10 +358,10 @@ const ChannelView: React.FC<ChannelViewProps> = ({
 
       {/* Add Files Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-md p-6 max-w-3xl w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-medium">Add Files to Channel</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+          <div className="bg-black border border-zinc-800 p-6 max-w-3xl w-full">
+            <div className="flex justify-between items-center mb-4 border-b border-zinc-800 pb-2">
+              <h2 className="text-sm font-medium">Add Blocks to Channel</h2>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="text-zinc-400 hover:text-white"
@@ -366,7 +372,9 @@ const ChannelView: React.FC<ChannelViewProps> = ({
 
             {availableFiles.length === 0 ? (
               <div className="text-center p-8">
-                <p className="text-zinc-400">No more files available to add</p>
+                <p className="text-zinc-400 text-sm">
+                  No more files available to add
+                </p>
               </div>
             ) : (
               <div className="max-h-96 overflow-y-auto">
@@ -374,18 +382,18 @@ const ChannelView: React.FC<ChannelViewProps> = ({
                   {availableFiles.map((file) => (
                     <div
                       key={file.id}
-                      className="border border-zinc-800 p-3 rounded-md hover:bg-zinc-800 cursor-pointer transition-colors"
+                      className="border border-zinc-800 p-3 hover:border-zinc-600 cursor-pointer transition-colors"
                       onClick={() => addFileToChannel(file.id)}
                     >
                       <div className="flex items-start gap-2">
-                        <div className="p-1.5 bg-zinc-700 rounded">
+                        <div className="p-1.5 bg-zinc-900">
                           {getFileIcon(file.content.file_type)}
                         </div>
                         <div className="overflow-hidden">
-                          <p className="font-medium truncate">
+                          <p className="font-medium text-sm truncate">
                             {file.content.filename}
                           </p>
-                          <p className="text-xs text-zinc-400 truncate">
+                          <p className="text-xs text-zinc-500 truncate">
                             {file.content.path}
                           </p>
                         </div>
@@ -399,7 +407,7 @@ const ChannelView: React.FC<ChannelViewProps> = ({
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-sm text-sm"
+                className="px-4 py-2 text-xs border border-zinc-800 hover:border-zinc-600"
               >
                 Close
               </button>

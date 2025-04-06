@@ -70,15 +70,15 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ files }) => {
   const getFileIcon = (fileType: string) => {
     switch (fileType) {
       case "pdf":
-        return <File size={18} />;
+        return <File className="text-zinc-400" />;
       case "epub":
-        return <BookOpen size={18} />;
+        return <BookOpen className="text-zinc-400" />;
       case "code":
-        return <FileCode size={18} />;
+        return <FileCode className="text-zinc-400" />;
       case "text":
-        return <FileText size={18} />;
+        return <FileText className="text-zinc-400" />;
       default:
-        return <File size={18} />;
+        return <File className="text-zinc-400" />;
     }
   };
 
@@ -96,36 +96,56 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ files }) => {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-4">Files</h1>
-        <div className="flex items-center gap-4 border-b border-zinc-800 pb-4">
+    <div>
+      {/* Filter tabs - more subtle and cleaner */}
+      <div className="border-zinc-800 px-4">
+        <div className="flex items-center space-x-4">
           <button
-            className={`px-3 py-1.5 text-sm rounded-md ${filter === "all" ? "bg-zinc-800" : "hover:bg-zinc-900"}`}
+            className={`px-4 py-3 text-sm border-b-2 ${
+              filter === "all"
+                ? "border-white text-white"
+                : "border-transparent text-zinc-400 hover:text-zinc-200"
+            } transition-colors`}
             onClick={() => setFilter("all")}
           >
             All ({fileCounts.all})
           </button>
           <button
-            className={`px-3 py-1.5 text-sm rounded-md ${filter === "pdf" ? "bg-zinc-800" : "hover:bg-zinc-900"}`}
+            className={`px-4 py-3 text-sm border-b-2 ${
+              filter === "pdf"
+                ? "border-white text-white"
+                : "border-transparent text-zinc-400 hover:text-zinc-200"
+            } transition-colors`}
             onClick={() => setFilter("pdf")}
           >
             PDF ({fileCounts.pdf})
           </button>
           <button
-            className={`px-3 py-1.5 text-sm rounded-md ${filter === "epub" ? "bg-zinc-800" : "hover:bg-zinc-900"}`}
+            className={`px-4 py-3 text-sm border-b-2 ${
+              filter === "epub"
+                ? "border-white text-white"
+                : "border-transparent text-zinc-400 hover:text-zinc-200"
+            } transition-colors`}
             onClick={() => setFilter("epub")}
           >
             EPUB ({fileCounts.epub})
           </button>
           <button
-            className={`px-3 py-1.5 text-sm rounded-md ${filter === "code" ? "bg-zinc-800" : "hover:bg-zinc-900"}`}
+            className={`px-4 py-3 text-sm border-b-2 ${
+              filter === "code"
+                ? "border-white text-white"
+                : "border-transparent text-zinc-400 hover:text-zinc-200"
+            } transition-colors`}
             onClick={() => setFilter("code")}
           >
             Code ({fileCounts.code})
           </button>
           <button
-            className={`px-3 py-1.5 text-sm rounded-md ${filter === "text" ? "bg-zinc-800" : "hover:bg-zinc-900"}`}
+            className={`px-4 py-3 text-sm border-b-2 ${
+              filter === "text"
+                ? "border-white text-white"
+                : "border-transparent text-zinc-400 hover:text-zinc-200"
+            } transition-colors`}
             onClick={() => setFilter("text")}
           >
             Text ({fileCounts.text})
@@ -133,45 +153,48 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ files }) => {
         </div>
       </div>
 
-      {filteredFiles.length === 0 ? (
-        <div className="text-center p-12 border border-zinc-800 rounded-md">
-          <p className="text-zinc-400">
-            {files.length === 0
-              ? "No files have been indexed. Check your workspace directory."
-              : "No files match your current filters."}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredFiles.map((file) => (
-            <div
-              key={file.id}
-              className="border border-zinc-800 rounded-md overflow-hidden hover:border-zinc-700 transition-colors cursor-pointer"
-              onClick={() => handleOpenFile(file.content.full_path)}
-            >
-              <div className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-zinc-800 rounded-md">
-                    {getFileIcon(file.content.file_type)}
-                  </div>
+      {/* File list */}
+      <div className="p-1">
+        {filteredFiles.length === 0 ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-zinc-500 text-sm">
+              {files.length === 0
+                ? "No files have been indexed. Check your workspace directory."
+                : "No files match your current filters."}
+            </p>
+          </div>
+        ) : (
+          <div className="w-full">
+            {filteredFiles.map((file) => (
+              <div
+                key={file.id}
+                className="border-b border-zinc-800 hover:bg-zinc-900/30 transition-colors cursor-pointer"
+                onClick={() => handleOpenFile(file.content.full_path)}
+              >
+                <div className="px-4 py-3 flex items-center gap-3">
+                  {getFileIcon(file.content.file_type)}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium mb-1 truncate">
+                    <h3 className="font-medium truncate">
                       {file.content.filename}
                     </h3>
-                    <p className="text-xs text-zinc-400 truncate">
+                    <p className="text-xs text-zinc-500 mt-0.5 truncate">
                       {file.content.path}
                     </p>
                   </div>
+                  <div className="flex items-center gap-3 text-zinc-500">
+                    <span className="text-xs uppercase">
+                      {file.content.file_type}
+                    </span>
+                    <span className="text-xs">
+                      {format(new Date(file.created_at), "MMM d, yyyy")}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="bg-zinc-900 px-4 py-2 text-xs text-zinc-500 flex justify-between items-center">
-                <span>{file.content.file_type.toUpperCase()}</span>
-                <span>{format(new Date(file.created_at), "MMM d, yyyy")}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

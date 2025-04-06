@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Plus, Grid, List } from "lucide-react";
+import { Search, Plus, Grid, List, Circle } from "lucide-react";
 import { useTauri } from "../context/TauriContext";
 import ChannelView from "./ChannelView";
 import { Block, isChannelBlock } from "../types";
@@ -64,84 +64,91 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-black text-white">
+    <div className="px-5 bg-black text-white flex flex-col">
       {/* Top Navigation Bar */}
-      <header className="border-b border-zinc-800 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center">
-          <span className="font-bold mr-4">urXiv</span>
-          <div className="relative">
-            <form onSubmit={handleSearch} className="flex items-center">
-              <Search size={14} className="text-zinc-400 mr-2" />
-              <input
-                type="text"
-                placeholder="Search"
-                className="bg-transparent border-none outline-none text-sm text-zinc-400 w-64"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </form>
+      <header className="flex items-center justify-between">
+        <div className="py-3 w-full flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setView("files")}
+              className="text-xl font-medium"
+            >
+              urXiv
+            </button>
+            <span className="text-zinc-400">/</span>
+            <div className="flex items-center gap-1">
+              <button className="text-xl font-medium">User</button>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            className="bg-transparent border border-zinc-700 rounded-sm px-2 py-1 text-xs flex items-center gap-1"
-            onClick={() => setShowNewChannelForm(true)}
-          >
-            New channel <Plus size={14} />
-          </button>
+          <div className="flex items-center gap-3">
+            <button className="p-1">
+              <Search size={18} />
+            </button>
+            <button
+              className="px-2 py-1 bg-[#1A1A1A] border border-transparent hover:border-white text-xs flex items-center gap-1"
+              onClick={() => setShowNewChannelForm(true)}
+            >
+              New channel <Plus size={14} />
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-64 border-r border-zinc-800 flex flex-col">
-          <div className="p-4 border-b border-zinc-800">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="font-medium text-sm">Channels</h2>
-            </div>
+      <div className="flex-1 flex flex-col">
+        {/* Profile Header */}
 
-            <div className="space-y-1">
-              {channels.length === 0 ? (
-                <p className="text-xs text-zinc-500 px-2 py-1">
-                  No channels yet
-                </p>
-              ) : (
-                channels.map((channel) => (
-                  <button
-                    key={channel.id}
-                    className={`w-full text-left px-2 py-1.5 text-sm rounded ${selectedChannelId === channel.id ? "bg-zinc-800" : "hover:bg-zinc-900"}`}
-                    onClick={() => handleChannelClick(channel.id)}
-                  >
-                    {channel.content.title || "Untitled Channel"}
-                  </button>
-                ))
-              )}
+        {/* Sidebar and Content */}
+        <div className="flex flex-1">
+          {/* Sidebar */}
+          <div className="w-64 h-full border-r border-zinc-800">
+            <div className="py-1 border-b border-zinc-800 font-medium text-sm">
+              View
             </div>
+            <ul className="text-sm">
+              <li className="px-6 py-1.5 text-zinc-400 hover:text-white">
+                <button className="w-full text-left">Channels</button>
+              </li>
+              <li className="px-6 py-1.5 text-zinc-400 hover:text-white">
+                <button className="w-full text-left">Blocks</button>
+              </li>
+              <li
+                className={`px-6 py-1.5 flex items-center gap-2 ${view === "files" ? "text-white" : "text-zinc-400 hover:text-white"}`}
+              >
+                <button
+                  className="w-full text-left flex items-center"
+                  onClick={() => setView("files")}
+                >
+                  <span>Files</span>
+                </button>
+              </li>
+            </ul>
           </div>
-        </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-auto">
-          {view === "files" ? (
-            <FileBrowser files={files} />
-          ) : selectedChannelId ? (
-            <ChannelView
-              channelId={selectedChannelId}
-              onChannelUpdated={loadChannels}
-            />
-          ) : (
-            <div className="p-8 text-center text-zinc-500">
-              Select a channel to view its contents
-            </div>
-          )}
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-auto">
+            {view === "files" ? (
+              <FileBrowser files={files} />
+            ) : selectedChannelId ? (
+              <ChannelView
+                channelId={selectedChannelId}
+                onChannelUpdated={loadChannels}
+              />
+            ) : (
+              <div className="p-8 text-center">
+                <p className="text-zinc-400 text-sm">
+                  Select a channel to view its contents
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* New Channel Modal */}
       {showNewChannelForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-md p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+          <div className="bg-black border border-zinc-800 p-6 max-w-md w-full">
             <h2 className="text-xl font-medium mb-4">Create New Channel</h2>
             <NewChannel
               onChannelCreated={handleChannelCreated}
