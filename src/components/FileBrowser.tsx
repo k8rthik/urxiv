@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { File, FileCode, FileText, BookOpen } from "lucide-react";
 import { Block } from "../types";
 import { format } from "date-fns";
@@ -12,9 +12,6 @@ interface FileBrowserProps {
 
 const FileBrowser: React.FC<FileBrowserProps> = ({ files }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filter, setFilter] = useState<
-    "all" | "pdf" | "epub" | "code" | "text"
-  >("all");
 
   // Initialize Tauri shell API
   useEffect(() => {
@@ -27,45 +24,17 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ files }) => {
     }
   }, []);
 
-  const filteredFiles = useMemo(() => {
-    return files.filter((file) => {
-      // Apply file type filter
-      if (filter !== "all" && file.content.file_type !== filter) {
-        return false;
-      }
-
-      // Apply search term filter
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          file.content.filename.toLowerCase().includes(searchLower) ||
-          file.content.path.toLowerCase().includes(searchLower)
-        );
-      }
-
-      return true;
-    });
-  }, [files, searchTerm, filter]);
-
-  // Group files by file type for the filter counts
-  const fileCounts = useMemo(() => {
-    const counts = {
-      all: files.length,
-      pdf: 0,
-      epub: 0,
-      code: 0,
-      text: 0,
-    };
-
-    files.forEach((file) => {
-      if (file.content.file_type === "pdf") counts.pdf++;
-      if (file.content.file_type === "epub") counts.epub++;
-      if (file.content.file_type === "code") counts.code++;
-      if (file.content.file_type === "text") counts.text++;
-    });
-
-    return counts;
-  }, [files]);
+  // Apply search term filter
+  const filteredBySearchFiles = files.filter((file) => {
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        file.content.filename.toLowerCase().includes(searchLower) ||
+        file.content.path.toLowerCase().includes(searchLower)
+      );
+    }
+    return true;
+  });
 
   const getFileIcon = (fileType: string) => {
     switch (fileType) {
@@ -97,65 +66,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ files }) => {
 
   return (
     <div>
-      {/* Filter tabs - more subtle and cleaner */}
-      <div className="border-zinc-800 px-4">
-        <div className="flex items-center space-x-4">
-          <button
-            className={`px-4 py-3 text-sm border-b-2 ${
-              filter === "all"
-                ? "border-white text-white"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
-            } transition-colors`}
-            onClick={() => setFilter("all")}
-          >
-            All ({fileCounts.all})
-          </button>
-          <button
-            className={`px-4 py-3 text-sm border-b-2 ${
-              filter === "pdf"
-                ? "border-white text-white"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
-            } transition-colors`}
-            onClick={() => setFilter("pdf")}
-          >
-            PDF ({fileCounts.pdf})
-          </button>
-          <button
-            className={`px-4 py-3 text-sm border-b-2 ${
-              filter === "epub"
-                ? "border-white text-white"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
-            } transition-colors`}
-            onClick={() => setFilter("epub")}
-          >
-            EPUB ({fileCounts.epub})
-          </button>
-          <button
-            className={`px-4 py-3 text-sm border-b-2 ${
-              filter === "code"
-                ? "border-white text-white"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
-            } transition-colors`}
-            onClick={() => setFilter("code")}
-          >
-            Code ({fileCounts.code})
-          </button>
-          <button
-            className={`px-4 py-3 text-sm border-b-2 ${
-              filter === "text"
-                ? "border-white text-white"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
-            } transition-colors`}
-            onClick={() => setFilter("text")}
-          >
-            Text ({fileCounts.text})
-          </button>
-        </div>
-      </div>
-
       {/* File list */}
       <div className="p-1">
-        {filteredFiles.length === 0 ? (
+        {filteredBySearchFiles.length === 0 ? (
           <div className="flex items-center justify-center h-64">
             <p className="text-zinc-500 text-sm">
               {files.length === 0
@@ -165,7 +78,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ files }) => {
           </div>
         ) : (
           <div className="w-full">
-            {filteredFiles.map((file) => (
+            {filteredBySearchFiles.map((file) => (
               <div
                 key={file.id}
                 className="border-b border-zinc-800 hover:bg-zinc-900/30 transition-colors cursor-pointer"

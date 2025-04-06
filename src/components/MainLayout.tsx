@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Search, Plus, Grid, List, Circle } from "lucide-react";
 import { useTauri } from "../context/TauriContext";
 import ChannelView from "./ChannelView";
 import { Block, isChannelBlock } from "../types";
 import NewChannel from "./NewChannel";
 import FileBrowser from "./FileBrowser";
+import Sidebar from "./Sidebar";
 
 interface MainLayoutProps {
   initialFiles: Block[];
@@ -20,6 +21,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
   );
   const [showNewChannelForm, setShowNewChannelForm] = useState(false);
   const [view, setView] = useState<"files" | "channel">("files");
+  const [filter, setFilter] = useState<
+    "all" | "pdf" | "epub" | "code" | "text"
+  >("all");
 
   useEffect(() => {
     loadChannels();
@@ -63,6 +67,37 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
     setView("channel");
   };
 
+  // Calculate file counts for the sidebar
+  const fileCounts = useMemo(() => {
+    const counts = {
+      all: files.length,
+      pdf: 0,
+      epub: 0,
+      code: 0,
+      text: 0,
+    };
+
+    files.forEach((file) => {
+      if (file.content.file_type === "pdf") counts.pdf++;
+      if (file.content.file_type === "epub") counts.epub++;
+      if (file.content.file_type === "code") counts.code++;
+      if (file.content.file_type === "text") counts.text++;
+    });
+
+    return counts;
+  }, [files]);
+
+  // Filter files based on the selected filter
+  const filteredFiles = useMemo(() => {
+    return files.filter((file) => {
+      // Apply file type filter
+      if (filter !== "all" && file.content.file_type !== filter) {
+        return false;
+      }
+      return true;
+    });
+  }, [files, filter]);
+
   return (
     <div className="px-5 bg-black text-white flex flex-col">
       {/* Top Navigation Bar */}
@@ -71,14 +106,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setView("files")}
-              className="text-xl font-medium"
+              className="text-xl font-bold"
             >
               urXiv
             </button>
-            <span className="text-zinc-400">/</span>
-            <div className="flex items-center gap-1">
-              <button className="text-xl font-medium">User</button>
-            </div>
           </div>
           <div className="flex items-center gap-3">
             <button className="p-1">
@@ -96,39 +127,24 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Profile Header */}
-
         {/* Sidebar and Content */}
         <div className="flex flex-1">
           {/* Sidebar */}
-          <div className="w-64 h-full border-r border-zinc-800">
-            <div className="py-1 border-b border-zinc-800 font-medium text-sm">
-              View
-            </div>
-            <ul className="text-sm">
-              <li className="px-6 py-1.5 text-zinc-400 hover:text-white">
-                <button className="w-full text-left">Channels</button>
-              </li>
-              <li className="px-6 py-1.5 text-zinc-400 hover:text-white">
-                <button className="w-full text-left">Blocks</button>
-              </li>
-              <li
-                className={`px-6 py-1.5 flex items-center gap-2 ${view === "files" ? "text-white" : "text-zinc-400 hover:text-white"}`}
-              >
-                <button
-                  className="w-full text-left flex items-center"
-                  onClick={() => setView("files")}
-                >
-                  <span>Files</span>
-                </button>
-              </li>
-            </ul>
+          <div class="h-lvh">
+            <Sidebar
+              view={view}
+              setView={setView}
+              filter={filter}
+              setFilter={setFilter}
+              fileCounts={fileCounts}
+              showFileFilters={view === "files"}
+            />
           </div>
 
           {/* Main Content Area */}
           <div className="flex-1 overflow-auto">
             {view === "files" ? (
-              <FileBrowser files={files} />
+              <FileBrowser files={filteredFiles} />
             ) : selectedChannelId ? (
               <ChannelView
                 channelId={selectedChannelId}
