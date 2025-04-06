@@ -1,10 +1,9 @@
-use std::sync::Mutex;
+use models::AppState;
+use tauri::Manager;
 
 mod commands;
 mod models;
 mod storage;
-
-use models::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
