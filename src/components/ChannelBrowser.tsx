@@ -1,19 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { Block } from "../types";
 import { format } from "date-fns";
-import { Calendar, Users, Filter, Loader } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  Filter,
+  Loader,
+  File,
+  FileText,
+  FileCode,
+  BookOpen,
+} from "lucide-react";
 import { useTauri } from "../context/TauriContext";
 
 interface ChannelBrowserProps {
   onChannelClick: (channelId: number) => void;
 }
 
+interface ChannelWithBlocks {
+  channel: Block;
+  blocks: Block[];
+  blockCount: number;
+}
+
 const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
   const { getAllChannels, getBlocksInChannel } = useTauri();
-  const [channels, setChannels] = useState<Block[]>([]);
-  const [channelBlocks, setChannelBlocks] = useState<Record<number, number>>(
-    {},
-  );
+  const [channelsWithBlocks, setChannelsWithBlocks] = useState<
+    ChannelWithBlocks[]
+  >([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
   const [isLoading, setIsLoading] = useState(true);
@@ -30,29 +44,28 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
 
     try {
       const channelsData = await getAllChannels();
-      setChannels(channelsData);
 
-      // Load block counts for each channel
-      const blocksPromises = channelsData.map(async (channel) => {
+      // Load blocks for each channel
+      const channelsWithBlocksPromises = channelsData.map(async (channel) => {
         try {
           const blocks = await getBlocksInChannel(channel.id);
-          return { channelId: channel.id, count: blocks.length };
+          return {
+            channel,
+            blocks,
+            blockCount: blocks.length,
+          };
         } catch (err) {
           console.error(`Failed to get blocks for channel ${channel.id}:`, err);
-          return { channelId: channel.id, count: 0 };
+          return {
+            channel,
+            blocks: [],
+            blockCount: 0,
+          };
         }
       });
 
-      const blocksResults = await Promise.all(blocksPromises);
-      const blocksMap = blocksResults.reduce(
-        (acc, item) => {
-          acc[item.channelId] = item.count;
-          return acc;
-        },
-        {} as Record<number, number>,
-      );
-
-      setChannelBlocks(blocksMap);
+      const results = await Promise.all(channelsWithBlocksPromises);
+      setChannelsWithBlocks(results);
     } catch (err) {
       console.error("Failed to load channels:", err);
       setError("Failed to load channels. Please try again.");
@@ -61,28 +74,28 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
     }
   };
 
+  // Get preview blocks (up to 4)
+  const getPreviewBlocks = (blocks: Block[]) => {
+    return blocks.slice(0, 4);
+  };
+
   // Filter channels based on search term
-  const filteredChannels = channels.filter((channel) => {
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        channel.content.title?.toLowerCase().includes(searchLower) ||
-        channel.content.description?.toLowerCase().includes(searchLower)
-      );
-    }
-    return true;
+  const filteredChannels = channelsWithBlocks.filter((item) => {
+    const title = item.channel.content.title?.toLowerCase() || "";
+    return title.includes(searchTerm.toLowerCase());
   });
 
   // Sort channels based on selected sort method
   const sortedChannels = [...filteredChannels].sort((a, b) => {
     if (sortBy === "recent") {
       return (
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        new Date(b.channel.updated_at || b.channel.created_at).getTime() -
+        new Date(a.channel.updated_at || a.channel.created_at).getTime()
       );
     } else {
       // Sort alphabetically by title
-      const titleA = a.content.title?.toLowerCase() || "";
-      const titleB = b.content.title?.toLowerCase() || "";
+      const titleA = a.channel.content.title?.toLowerCase() || "";
+      const titleB = b.channel.content.title?.toLowerCase() || "";
       return titleA.localeCompare(titleB);
     }
   });
@@ -111,91 +124,82 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
   }
 
   return (
-    <div>
-      {/* Sorting options */}
-      <div className="border-b border-zinc-800 px-4">
-        <div className="flex items-center space-x-4">
-          <button
-            className={`px-4 py-3 text-sm border-b-2 ${
-              sortBy === "recent"
-                ? "border-white text-white"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
-            } transition-colors flex items-center gap-1`}
-            onClick={() => setSortBy("recent")}
-          >
-            <Calendar size={14} />
-            Recent
-          </button>
-          <button
-            className={`px-4 py-3 text-sm border-b-2 ${
-              sortBy === "alphabetical"
-                ? "border-white text-white"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
-            } transition-colors flex items-center gap-1`}
-            onClick={() => setSortBy("alphabetical")}
-          >
-            <Filter size={14} />
-            Alphabetical
-          </button>
-        </div>
-      </div>
-
-      {/* Search input */}
-      <div className="p-4">
-        <input
-          type="text"
-          placeholder="Search channels..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-3 py-2 bg-zinc-900 text-white border border-zinc-800 rounded-sm focus:outline-none focus:border-zinc-600 text-sm"
-        />
-      </div>
-
+    <div className="p-6">
       {/* Channel list */}
-      <div className="p-1">
-        {sortedChannels.length === 0 ? (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-zinc-500 text-sm">
-              {channels.length === 0
-                ? "No channels have been created yet."
-                : "No channels match your search."}
-            </p>
-          </div>
-        ) : (
-          <div className="w-full">
-            {sortedChannels.map((channel) => (
-              <div
-                key={channel.id}
-                className="border-b border-zinc-800 hover:bg-zinc-900/30 transition-colors cursor-pointer"
-                onClick={() => onChannelClick(channel.id)}
-              >
-                <div className="px-4 py-3">
-                  <h3 className="font-medium">
-                    {channel.content.title || "Untitled Channel"}
+      {filteredChannels.length === 0 ? (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-zinc-500 text-sm">
+            {channelsWithBlocks.length === 0
+              ? "No channels have been created yet."
+              : "No channels match your search."}
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-8">
+          {filteredChannels.map((item) => (
+            <div
+              key={item.channel.id}
+              className="border border-zinc-800 overflow-hidden cursor-pointer hover:border-zinc-700 transition-colors"
+              onClick={() => onChannelClick(item.channel.id)}
+            >
+              <div className="flex align-middle p-6">
+                {/* Channel info section - left side */}
+                <div className="w-64 pr-8 flex-shrink-0">
+                  <h3 className="text-2xl font-medium text-white">
+                    {item.channel.content.title || "Untitled Channel"}
                   </h3>
-                  {channel.content.description && (
-                    <p className="text-sm text-zinc-500 mt-1 line-clamp-2">
-                      {channel.content.description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-3 text-zinc-500 mt-2">
-                    <div className="flex items-center gap-1 text-xs">
-                      <Calendar size={12} />
-                      <span>
-                        {format(new Date(channel.created_at), "MMM d, yyyy")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs">
-                      <Users size={12} />
-                      <span>{channelBlocks[channel.id] || 0} blocks</span>
-                    </div>
+                  <div className="text-zinc-500 mt-1 text-sm">
+                    {item.blockCount} blocks
+                  </div>
+                  <div className="text-zinc-500 mt-1 text-sm">
+                    last edited{" "}
+                    {format(
+                      new Date(
+                        item.channel.updated_at || item.channel.created_at,
+                      ),
+                      "MMMM d, yyyy",
+                    )}{" "}
                   </div>
                 </div>
+
+                {/* Channel preview section - horizontal row */}
+                <div className="flex flex-grow gap-4 items-center">
+                  {getPreviewBlocks(item.blocks).map((block, index) => (
+                    <div
+                      key={block.id}
+                      className="bg-zinc-900 flex-1 h-64 flex items-center justify-center"
+                    >
+                      {/* Show actual content/thumbnails when available */}
+                      {block.content.file_url ? (
+                        <img
+                          src={block.content.file_url}
+                          alt={block.content.title || ""}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-zinc-800">
+                          <span className="text-zinc-500">···</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {/* If there are fewer than 4 blocks, fill with empty slots */}
+                  {Array.from({
+                    length: Math.max(0, 4 - item.blocks.length),
+                  }).map((_, index) => (
+                    <div
+                      key={`empty-${index}`}
+                      className="flex-1 h-64 flex items-center justify-center bg-zinc-800"
+                    >
+                      <span className="text-zinc-500 text-xl">···</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

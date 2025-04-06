@@ -26,7 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   return (
     <div className="w-64 h-full border-r border-zinc-800">
-      <div className="py-1 border-b border-zinc-800 font-medium text-sm">
+      <div className="py-1 border-b border-zinc-800 text-zinc-500 font-medium text-sm">
         View
       </div>
       <ul className="text-sm">

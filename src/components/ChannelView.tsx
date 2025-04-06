@@ -282,6 +282,12 @@ const ChannelView: React.FC<ChannelViewProps> = ({
                 >
                   <X size={14} /> Delete
                 </button>
+                <button
+                  onClick={openAddFilesModal}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs border border-zinc-800 hover:border-zinc-600"
+                >
+                  <Plus size={14} /> Add Blocks
+                </button>
               </div>
             </div>
             {channel.content.description && (
@@ -291,16 +297,6 @@ const ChannelView: React.FC<ChannelViewProps> = ({
             )}
           </div>
         )}
-      </div>
-
-      <div className="mb-6 flex justify-between items-center border-b border-zinc-800 pb-3">
-        <h2 className="text-sm font-medium">Blocks</h2>
-        <button
-          onClick={openAddFilesModal}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs border border-zinc-800 hover:border-zinc-600"
-        >
-          <Plus size={14} /> Add Files
-        </button>
       </div>
 
       {blocks.length === 0 ? (

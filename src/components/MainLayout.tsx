@@ -129,7 +129,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleViewChange("files")}
-              className="text-xl font-bold"
+              className="text-xl font-serif font-bold"
             >
               urXiv
             </button>
