@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Search, Plus, Grid, List, Circle } from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Search, Plus, Grid, List, Circle, X } from "lucide-react";
 import { useTauri } from "../context/TauriContext";
 import ChannelView from "./ChannelView";
 import { Block, isChannelBlock } from "../types";
@@ -7,24 +7,39 @@ import NewChannel from "./NewChannel";
 import FileBrowser from "./FileBrowser";
 import ChannelBrowser from "./ChannelBrowser";
 import Sidebar from "./Sidebar";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface MainLayoutProps {
   initialFiles: Block[];
 }
 
+interface SearchResult {
+  id: number;
+  type: "file" | "channel" | "block";
+  title: string;
+  parentTitle?: string; // For blocks, the channel they belong to
+}
+
 const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
-  const { getAllChannels, getAllFiles } = useTauri();
+  const { getAllChannels, getAllFiles, getBlocksInChannel, searchAllContent } =
+    useTauri();
   const [channels, setChannels] = useState<Block[]>([]);
   const [files, setFiles] = useState<Block[]>(initialFiles);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<number | null>(
     null,
   );
   const [showNewChannelForm, setShowNewChannelForm] = useState(false);
-  const [view, setView] = useState<"files" | "channels" | "channel">("files");
+  const [view, setView] = useState<"files" | "channels" | "channel" | "blocks">(
+    "files",
+  );
   const [filter, setFilter] = useState<
     "all" | "pdf" | "epub" | "code" | "text"
   >("all");
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadChannels();
@@ -32,6 +47,24 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
       loadFiles();
     }
   }, []);
+
+  // Focus search input when search is opened
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isSearchOpen]);
+
+  // Perform search when query changes
+  useEffect(() => {
+    if (searchQuery && searchQuery.length > 1) {
+      performSearch(searchQuery);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchQuery]);
 
   const loadChannels = async () => {
     try {
@@ -51,10 +84,89 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implement search functionality
-    console.log("Search for:", searchQuery);
+  // Fuzzy search implementation
+  const performSearch = async (query: string) => {
+    try {
+      // This is where you'd call your backend search function
+      // For now, we'll implement a simple front-end fuzzy search
+
+      const results: SearchResult[] = [];
+
+      // Search in files
+      files.forEach((file) => {
+        const title = file.content.title || "Untitled";
+        if (fuzzyMatch(title, query)) {
+          results.push({
+            id: file.id,
+            type: "file",
+            title: title,
+          });
+        }
+      });
+
+      // Search in channels
+      channels.forEach((channel) => {
+        const title = channel.content.title || "Untitled Channel";
+        if (fuzzyMatch(title, query)) {
+          results.push({
+            id: channel.id,
+            type: "channel",
+            title: title,
+          });
+        }
+
+        // We'd need to load blocks for each channel to search them
+        // This would be better handled by the backend
+      });
+
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Search failed:", error);
+    }
+  };
+
+  // Simple fuzzy matching function
+  const fuzzyMatch = (text: string, query: string): boolean => {
+    text = text.toLowerCase();
+    query = query.toLowerCase();
+
+    let i = 0,
+      j = 0;
+    while (i < text.length && j < query.length) {
+      if (text[i] === query[j]) {
+        j++;
+      }
+      i++;
+    }
+
+    return j === query.length;
+  };
+
+  const toggleSearch = () => {
+    setIsSearchOpen(!isSearchOpen);
+    if (!isSearchOpen) {
+      setSearchQuery("");
+      setSearchResults([]);
+    }
+  };
+
+  const handleSearchResultClick = (result: SearchResult) => {
+    if (result.type === "channel") {
+      setSelectedChannelId(result.id);
+      setView("channel");
+    } else if (result.type === "file") {
+      // Handle file click - perhaps open it or go to file view
+      setView("files");
+      // You might want to highlight the selected file
+    } else if (result.type === "block") {
+      // Handle block click - perhaps go to the channel and scroll to block
+      setSelectedChannelId(Number(result.parentTitle)); // This assumes parentTitle is the channel ID
+      setView("channel");
+      // You'd need to set up a way to scroll to the specific block
+    }
+
+    // Close search
+    setIsSearchOpen(false);
   };
 
   const handleChannelClick = (channelId: number) => {
@@ -108,7 +220,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
     }
   };
 
-  const handleViewChange = (newView: "files" | "channels" | "channel") => {
+  const handleViewChange = (
+    newView: "files" | "channels" | "channel" | "blocks",
+  ) => {
     setView(newView);
     // If switching away from channel view, clear the selected channel
     if (newView !== "channel") {
@@ -135,9 +249,88 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
             </button>
           </div>
           <div className="flex items-center gap-3">
-            <button className="p-1">
-              <Search size={18} />
-            </button>
+            <div className="h-5 relative flex items-center">
+              <AnimatePresence>
+                {isSearchOpen && (
+                  <motion.div
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 300, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="relative mr-2"
+                  >
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search channels, files, and blocks..."
+                      className="w-full bg-[#1A1A1A] border border-zinc-800 px-3 py-1 text-sm focus:outline-none focus:border-zinc-600"
+                    />
+                    {searchQuery && (
+                      <button
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-zinc-400"
+                        onClick={() => setSearchQuery("")}
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+
+                    {/* Search Results Dropdown */}
+                    {searchResults.length > 0 && (
+                      <div className="absolute top-full left-0 w-full mt-1 bg-[#1A1A1A] border border-zinc-800 shadow-lg z-10 max-h-80 overflow-y-auto">
+                        {searchResults.map((result) => (
+                          <div
+                            key={`${result.type}-${result.id}`}
+                            className="px-3 py-2 hover:bg-zinc-800 cursor-pointer"
+                            onClick={() => handleSearchResultClick(result)}
+                          >
+                            <div className="flex items-center">
+                              {result.type === "file" && (
+                                <File
+                                  size={14}
+                                  className="mr-2 text-zinc-400"
+                                />
+                              )}
+                              {result.type === "channel" && (
+                                <List
+                                  size={14}
+                                  className="mr-2 text-zinc-400"
+                                />
+                              )}
+                              {result.type === "block" && (
+                                <Square
+                                  size={14}
+                                  className="mr-2 text-zinc-400"
+                                />
+                              )}
+                              <div>
+                                <div className="text-sm font-medium">
+                                  {result.title}
+                                </div>
+                                {result.parentTitle && (
+                                  <div className="text-xs text-zinc-500">
+                                    in {result.parentTitle}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <button
+                className={`p-1 ${isSearchOpen ? "text-white" : "text-zinc-400 hover:text-white"}`}
+                onClick={toggleSearch}
+              >
+                <Search size={18} />
+              </button>
+            </div>
+
             <button
               className="px-2 py-1 bg-[#1A1A1A] border border-transparent hover:border-white text-xs flex items-center gap-1"
               onClick={toggleNewChannelForm}
@@ -170,6 +363,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
               <FileBrowser files={filteredFiles} />
             ) : view === "channels" ? (
               <ChannelBrowser onChannelClick={handleChannelClick} />
+            ) : view === "blocks" ? (
+              <BlockBrowser
+                blockType="annotation"
+                title="Annotations"
+                emptyMessage="No annotations yet"
+              />
             ) : selectedChannelId ? (
               <ChannelView
                 channelId={selectedChannelId}

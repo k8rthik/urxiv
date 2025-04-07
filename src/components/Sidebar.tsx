@@ -1,9 +1,11 @@
 import React from "react";
-import { FileText, Users, Blocks } from "lucide-react";
+import { Bookmark, FileText, Users, Blocks } from "lucide-react";
 
 interface SidebarProps {
-  view: "files" | "channels" | "channel";
-  setView: (view: "files" | "channels" | "channel") => void;
+  view: "files" | "channels" | "channel" | "blocks";
+  setView: (
+    view: "files" | "channels" | "channel" | "blocks" | "block",
+  ) => void;
   filter: "all" | "pdf" | "epub" | "code" | "text";
   setFilter: (filter: "all" | "pdf" | "epub" | "code" | "text") => void;
   fileCounts: {
@@ -141,6 +143,13 @@ const Sidebar: React.FC<SidebarProps> = ({
               >
                 Text ({fileCounts.text})
               </button>
+            </li>
+            <li
+              className={`px-6 py-1.5 ${filter === "blocks" ? "text-white" : "text-zinc-400"}`}
+              onClick={() => setView("blocks")}
+            >
+              <Bookmark size={16} />
+              <span>Blocks</span>
             </li>
           </ul>
         </>

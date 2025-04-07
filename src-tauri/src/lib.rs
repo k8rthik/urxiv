@@ -1,6 +1,5 @@
 use models::AppState;
 use tauri::Manager;
-
 mod commands;
 mod models;
 mod storage;
@@ -16,9 +15,11 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // Workspace commands
             commands::workspace::select_workspace,
             commands::workspace::get_workspace_status,
             commands::workspace::index_workspace_files,
+            // Block commands
             commands::blocks::get_all_blocks,
             commands::blocks::get_all_files,
             commands::blocks::get_all_channels,
@@ -29,6 +30,12 @@ pub fn run() {
             commands::blocks::disconnect_blocks,
             commands::blocks::delete_block,
             commands::blocks::update_block_content,
+            // Annotation commands - new functionality
+            commands::annotation::create_annotation,
+            commands::annotation::index_file,
+            commands::annotation::index_directory,
+            commands::annotation::get_file_content,
+            commands::annotation::get_file_annotations,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

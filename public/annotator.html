@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>File Annotator</title>
+    <!-- Include your stylesheets -->
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // Get file ID from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const fileId = urlParams.get("fileId");
+
+      // Store it in window for the React app to access
+      window.FILE_ID = fileId;
+    </script>
+    <script type="module" src="./annotator.js"></script>
+  </body>
+</html>
