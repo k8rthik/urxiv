@@ -1,11 +1,12 @@
 import React from "react";
 import { FileText, Users, Blocks } from "lucide-react";
+import { ViewType, FileFilter } from "../types";
 
 interface SidebarProps {
-  view: "files" | "channels" | "channel";
-  setView: (view: "files" | "channels" | "channel") => void;
-  filter: "all" | "pdf" | "epub" | "code" | "text";
-  setFilter: (filter: "all" | "pdf" | "epub" | "code" | "text") => void;
+  view: ViewType;
+  setView: (view: ViewType) => void;
+  filter: FileFilter;
+  setFilter: (filter: FileFilter) => void;
   fileCounts: {
     all: number;
     pdf: number;
@@ -45,8 +46,15 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span>Channels</span>
           </button>
         </li>
-        <li className="px-6 py-1.5 text-zinc-400 hover:text-white">
-          <button className="w-full text-left flex items-center gap-2">
+        <li
+          className={`px-6 py-1.5 flex items-center gap-2 ${
+            view === "blocks" ? "text-white" : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <button
+            className="w-full text-left flex items-center gap-2"
+            onClick={() => setView("blocks")}
+          >
             <Blocks size={16} />
             <span>Blocks</span>
           </button>
