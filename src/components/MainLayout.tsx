@@ -5,6 +5,7 @@ import ChannelView from "./ChannelView";
 import { Block, isChannelBlock, ViewType, FileFilter } from "../types";
 import NewChannel from "./NewChannel";
 import FileBrowser from "./FileBrowser";
+import BlockBrowser from "./BlockBrowser";
 import ChannelBrowser from "./ChannelBrowser";
 import Sidebar from "./Sidebar";
 
@@ -69,6 +70,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
   const handleChannelClick = (channelId: number) => {
     setSelectedChannelId(channelId);
     setView("channel");
+  };
+
+  const handleBlockClick = (blockId: number) => {
+    // For now, just print to console
+    console.log("Block clicked:", blockId);
+
+    // If it's a channel, navigate to channel view
+    const clickedBlock = blocks.find((block) => block.id === blockId);
+    if (clickedBlock && clickedBlock.block_type === "channel") {
+      setSelectedChannelId(blockId);
+      setView("channel");
+    }
   };
 
   const handleChannelCreated = (newChannel: Block) => {
@@ -172,7 +185,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
             {view === "files" ? (
               <FileBrowser files={filteredContent as Block[]} />
             ) : view === "blocks" ? (
-              <FileBrowser files={filteredContent as Block[]} />
+              <BlockBrowser
+                blocks={filteredContent as Block[]}
+                onBlockClick={handleBlockClick}
+              />
             ) : view === "channels" ? (
               <ChannelBrowser onChannelClick={handleChannelClick} />
             ) : selectedChannelId ? (

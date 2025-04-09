@@ -16,14 +16,16 @@ import {
 let tauriShell: any = null;
 
 interface BlockBrowserProps {
+  blocks: Block[];
   onBlockClick?: (blockId: number) => void;
 }
 
-const BlockBrowser: React.FC<BlockBrowserProps> = ({ onBlockClick }) => {
-  const { getAllBlocks } = useTauri();
-  const [blocks, setBlocks] = useState<Block[]>([]);
+const BlockBrowser: React.FC<BlockBrowserProps> = ({
+  blocks,
+  onBlockClick,
+}) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical" | "type">(
     "recent",
@@ -39,26 +41,6 @@ const BlockBrowser: React.FC<BlockBrowserProps> = ({ onBlockClick }) => {
       };
     }
   }, []);
-
-  // Load blocks on component mount
-  useEffect(() => {
-    loadBlocks();
-  }, []);
-
-  const loadBlocks = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const blocksData = await getAllBlocks();
-      setBlocks(blocksData);
-    } catch (err) {
-      console.error("Failed to load blocks:", err);
-      setError("Failed to load blocks. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Filter blocks based on search term
   const filteredBlocks = blocks.filter((block) => {
@@ -183,12 +165,6 @@ const BlockBrowser: React.FC<BlockBrowserProps> = ({ onBlockClick }) => {
     return (
       <div className="p-6 text-center">
         <p className="text-red-500">{error}</p>
-        <button
-          onClick={loadBlocks}
-          className="mt-4 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm"
-        >
-          Try Again
-        </button>
       </div>
     );
   }
