@@ -8,6 +8,7 @@ import {
   FileCode,
   FileText,
   BookOpen,
+  Check,
 } from "lucide-react";
 import { useTauri } from "../context/TauriContext";
 import { Block } from "../types";
@@ -45,6 +46,10 @@ const ChannelView: React.FC<ChannelViewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [availableFiles, setAvailableFiles] = useState<Block[]>([]);
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<number>>(
+    new Set(),
+  );
+  const [isAddingFiles, setIsAddingFiles] = useState(false);
 
   // Initialize Tauri shell API
   useEffect(() => {
@@ -138,6 +143,10 @@ const ChannelView: React.FC<ChannelViewProps> = ({
 
   const openAddFilesModal = async () => {
     try {
+      // Reset selection state
+      setSelectedFileIds(new Set());
+      setIsAddingFiles(false);
+
       // Get all files
       const allFiles = await getAllFiles();
 
@@ -155,9 +164,30 @@ const ChannelView: React.FC<ChannelViewProps> = ({
     }
   };
 
-  const addFileToChannel = async (fileId: number) => {
+  const handleFileSelect = (fileId: number) => {
+    setSelectedFileIds((prevSelected) => {
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(fileId)) {
+        newSelected.delete(fileId);
+      } else {
+        newSelected.add(fileId);
+      }
+      return newSelected;
+    });
+  };
+
+  const addFilesToChannel = async () => {
+    if (selectedFileIds.size === 0) return;
+
     try {
-      await connectBlocks(channelId, fileId);
+      setIsAddingFiles(true);
+
+      // Connect all selected files to the channel
+      const promises = Array.from(selectedFileIds).map((fileId) =>
+        connectBlocks(channelId, fileId),
+      );
+
+      await Promise.all(promises);
 
       // Refresh blocks in channel
       const channelBlocks = await getBlocksInChannel(channelId);
@@ -166,8 +196,10 @@ const ChannelView: React.FC<ChannelViewProps> = ({
       // Close modal
       setShowAddModal(false);
     } catch (err) {
-      console.error("Failed to add file to channel:", err);
-      setError("Failed to add file to channel");
+      console.error("Failed to add files to channel:", err);
+      setError("Failed to add files to channel");
+    } finally {
+      setIsAddingFiles(false);
     }
   };
 
@@ -352,7 +384,7 @@ const ChannelView: React.FC<ChannelViewProps> = ({
         </div>
       )}
 
-      {/* Add Files Modal */}
+      {/* Enhanced Multi-Select Add Files Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
           <div className="bg-black border border-zinc-800 p-6 max-w-3xl w-full">
@@ -378,12 +410,26 @@ const ChannelView: React.FC<ChannelViewProps> = ({
                   {availableFiles.map((file) => (
                     <div
                       key={file.id}
-                      className="border border-zinc-800 p-3 hover:border-zinc-600 cursor-pointer transition-colors"
-                      onClick={() => addFileToChannel(file.id)}
+                      className={`border ${
+                        selectedFileIds.has(file.id)
+                          ? "border-white bg-zinc-900"
+                          : "border-zinc-800 hover:border-zinc-600"
+                      } p-3 cursor-pointer transition-colors relative`}
+                      onClick={() => handleFileSelect(file.id)}
                     >
                       <div className="flex items-start gap-2">
-                        <div className="p-1.5 bg-zinc-900">
-                          {getFileIcon(file.content.file_type)}
+                        <div
+                          className={`p-1.5 ${
+                            selectedFileIds.has(file.id)
+                              ? "bg-white text-black"
+                              : "bg-zinc-900"
+                          }`}
+                        >
+                          {selectedFileIds.has(file.id) ? (
+                            <Check size={16} />
+                          ) : (
+                            getFileIcon(file.content.file_type)
+                          )}
                         </div>
                         <div className="overflow-hidden">
                           <p className="font-medium text-sm truncate">
@@ -400,13 +446,38 @@ const ChannelView: React.FC<ChannelViewProps> = ({
               </div>
             )}
 
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 text-xs border border-zinc-800 hover:border-zinc-600"
-              >
-                Close
-              </button>
+            <div className="mt-6 flex justify-between items-center">
+              <div className="text-sm text-zinc-400">
+                {selectedFileIds.size} block
+                {selectedFileIds.size !== 1 ? "s" : ""} selected
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 text-xs border border-zinc-800 hover:border-zinc-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addFilesToChannel}
+                  disabled={selectedFileIds.size === 0 || isAddingFiles}
+                  className={`px-4 py-2 text-xs flex items-center gap-1 ${
+                    selectedFileIds.size > 0 && !isAddingFiles
+                      ? "bg-white text-black"
+                      : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                  }`}
+                >
+                  {isAddingFiles ? (
+                    "Adding..."
+                  ) : (
+                    <>
+                      Add {selectedFileIds.size > 0 ? selectedFileIds.size : ""}{" "}
+                      Block
+                      {selectedFileIds.size !== 1 ? "s" : ""}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
