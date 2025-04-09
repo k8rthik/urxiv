@@ -17,8 +17,13 @@ export function isFileBlock(block: Block): boolean {
   return block.block_type === "file";
 }
 
-// View type for the main layout
 export type ViewType = "files" | "channels" | "blocks" | "channel";
-
-// File type filter
 export type FileFilter = "all" | "pdf" | "epub" | "code" | "text";
+export type BlockFilter = "all" | "channel" | "file";
+
+export function isChannel(block: Block): boolean {
+  return block.block_type === "channel";
+}
+export function isFiel(block: Block): boolean {
+  return block.block_type === "file";
+}
