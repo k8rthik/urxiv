@@ -106,8 +106,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
           return true;
         } else if (filter === "channel") {
           return block.block_type === "channel";
-        } else if (filter === "block") {
-          return block.block_type !== "channel" && block.block_type !== "file";
+        } else if (filter === "file") {
+          return block.block_type === "file";
         }
         return true;
       });

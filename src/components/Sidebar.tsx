@@ -20,7 +20,7 @@ const fileFilterOptions: Array<{ id: FileFilter; label: string }> = [
 const blockFilterOptions: Array<{ id: BlockFilter; label: string }> = [
   { id: "all", label: "All" },
   { id: "channel", label: "Channels" },
-  { id: "block", label: "Blocks" },
+  { id: "file", label: "Files" },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({
