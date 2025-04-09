@@ -1,28 +1,33 @@
 import React from "react";
 import { FileText, Users, Blocks } from "lucide-react";
+import { ViewType, FileFilter, BlockFilter } from "../types";
 
 interface SidebarProps {
-  view: "files" | "channels" | "channel";
-  setView: (view: "files" | "channels" | "channel") => void;
-  filter: "all" | "pdf" | "epub" | "code" | "text";
-  setFilter: (filter: "all" | "pdf" | "epub" | "code" | "text") => void;
-  fileCounts: {
-    all: number;
-    pdf: number;
-    epub: number;
-    code: number;
-    text: number;
-  };
-  showFileFilters: boolean;
+  view: ViewType;
+  setView: (view: ViewType) => void;
+  filter: FileFilter;
+  setFilter: (filter: FileFilter) => void;
 }
+
+const fileFilterOptions: Array<{ id: FileFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "pdf", label: "PDF" },
+  { id: "epub", label: "EPUB" },
+  { id: "code", label: "Code" },
+  { id: "text", label: "Text" },
+];
+
+const blockFilterOptions: Array<{ id: BlockFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "channel", label: "Channels" },
+  { id: "block", label: "Blocks" },
+];
 
 const Sidebar: React.FC<SidebarProps> = ({
   view,
   setView,
   filter,
   setFilter,
-  fileCounts,
-  showFileFilters,
 }) => {
   return (
     <div className="w-64 h-full border-r border-zinc-800">
@@ -45,8 +50,15 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span>Channels</span>
           </button>
         </li>
-        <li className="px-6 py-1.5 text-zinc-400 hover:text-white">
-          <button className="w-full text-left flex items-center gap-2">
+        <li
+          className={`px-6 py-1.5 flex items-center gap-2 ${
+            view === "blocks" ? "text-white" : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <button
+            className="w-full text-left flex items-center gap-2"
+            onClick={() => setView("blocks")}
+          >
             <Blocks size={16} />
             <span>Blocks</span>
           </button>
@@ -66,85 +78,65 @@ const Sidebar: React.FC<SidebarProps> = ({
         </li>
       </ul>
 
-      {showFileFilters && (
-        <>
-          <div className="py-1 border-b border-zinc-800 font-medium text-sm mt-4">
-            Filter
-          </div>
-          <ul className="text-sm">
-            <li
-              className={`px-6 py-1.5 ${
-                filter === "all"
-                  ? "text-white"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <button
-                className="w-full text-left"
-                onClick={() => setFilter("all")}
-              >
-                All ({fileCounts.all})
-              </button>
-            </li>
-            <li
-              className={`px-6 py-1.5 ${
-                filter === "pdf"
-                  ? "text-white"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <button
-                className="w-full text-left"
-                onClick={() => setFilter("pdf")}
-              >
-                PDF ({fileCounts.pdf})
-              </button>
-            </li>
-            <li
-              className={`px-6 py-1.5 ${
-                filter === "epub"
-                  ? "text-white"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <button
-                className="w-full text-left"
-                onClick={() => setFilter("epub")}
-              >
-                EPUB ({fileCounts.epub})
-              </button>
-            </li>
-            <li
-              className={`px-6 py-1.5 ${
-                filter === "code"
-                  ? "text-white"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <button
-                className="w-full text-left"
-                onClick={() => setFilter("code")}
-              >
-                Code ({fileCounts.code})
-              </button>
-            </li>
-            <li
-              className={`px-6 py-1.5 ${
-                filter === "text"
-                  ? "text-white"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <button
-                className="w-full text-left"
-                onClick={() => setFilter("text")}
-              >
-                Text ({fileCounts.text})
-              </button>
-            </li>
-          </ul>
-        </>
-      )}
+      {(() => {
+        if (view === "files") {
+          return (
+            <>
+              <div className="py-1 border-b border-zinc-800 font-medium text-sm mt-4">
+                Filter
+              </div>
+              <ul className="text-sm">
+                {fileFilterOptions.map((option) => (
+                  <li
+                    key={option.id}
+                    className={`px-6 py-1.5 ${
+                      filter === option.id
+                        ? "text-white"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    <button
+                      className="w-full text-left"
+                      onClick={() => setFilter(option.id)}
+                    >
+                      {option.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          );
+        } else if (view === "blocks") {
+          return (
+            <>
+              <div className="py-1 border-b border-zinc-800 font-medium text-sm mt-4">
+                Filter
+              </div>
+              <ul className="text-sm">
+                {blockFilterOptions.map((option) => (
+                  <li
+                    key={option.id}
+                    className={`px-6 py-1.5 ${
+                      filter === option.id
+                        ? "text-white"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    <button
+                      className="w-full text-left"
+                      onClick={() => setFilter(option.id)}
+                    >
+                      {option.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          );
+        } else {
+          return null;
+        }
+      })()}
     </div>
   );
 };
