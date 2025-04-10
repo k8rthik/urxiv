@@ -247,7 +247,7 @@ const ChannelView: React.FC<ChannelViewProps> = ({
 
   if (isLoading) {
     return (
-      <div className="p-6 text-center">
+      <div className="p-7 text-center">
         <p className="text-zinc-400">Loading channel...</p>
       </div>
     );
@@ -255,14 +255,14 @@ const ChannelView: React.FC<ChannelViewProps> = ({
 
   if (error || !channel) {
     return (
-      <div className="p-6 text-center">
+      <div className="p-7 text-center">
         <p className="text-red-500">{error || "Channel not found"}</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
+    <div className="p-7">
       <div className="mb-8">
         {isEditing ? (
           <div className="space-y-4">

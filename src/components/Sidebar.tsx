@@ -82,7 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         if (view === "files") {
           return (
             <>
-              <div className="py-1 border-b border-zinc-800 font-medium text-sm mt-4">
+              <div className="text-zinc-500 py-1 border-b border-zinc-800 font-medium text-sm mt-4">
                 Filter
               </div>
               <ul className="text-sm">
@@ -109,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         } else if (view === "blocks") {
           return (
             <>
-              <div className="py-1 border-b border-zinc-800 font-medium text-sm mt-4">
+              <div className="py-1 text-zinc-500 border-b border-zinc-800 font-medium text-sm mt-4">
                 Filter
               </div>
               <ul className="text-sm">

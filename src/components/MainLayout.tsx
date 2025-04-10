@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, Plus, Grid, List, Circle } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { useTauri } from "../context/TauriContext";
 import ChannelView from "./ChannelView";
-import { Block, isChannelBlock, ViewType, FileFilter } from "../types";
+import { Block, ViewType, FileFilter } from "../types";
 import NewChannel from "./NewChannel";
 import FileBrowser from "./FileBrowser";
 import BlockBrowser from "./BlockBrowser";
@@ -73,10 +73,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
   };
 
   const handleBlockClick = (blockId: number) => {
-    // For now, just print to console
     console.log("Block clicked:", blockId);
-
-    // If it's a channel, navigate to channel view
     const clickedBlock = blocks.find((block) => block.id === blockId);
     if (clickedBlock && clickedBlock.block_type === "channel") {
       setSelectedChannelId(blockId);
@@ -85,16 +82,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
   };
 
   const handleChannelCreated = (newChannel: Block) => {
-    loadChannels(); // Reload channels to ensure we have the latest data
+    loadChannels();
     setSelectedChannelId(newChannel.id);
     setView("channel");
   };
 
-  // Filter content based on the selected filter and current view
   const filteredContent = useMemo(() => {
     if (view === "files") {
       return files.filter((file) => {
-        // Apply file type filter
         if (filter !== "all" && file.content.file_type !== filter) {
           return false;
         }
@@ -117,7 +112,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
 
   const handleChannelUpdated = () => {
     loadChannels();
-    // If the channel was deleted, go back to channels view
     if (view === "channel") {
       setView("channels");
       setSelectedChannelId(null);
@@ -126,21 +120,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
 
   const handleViewChange = (newView: ViewType) => {
     setView(newView);
-    // Reset filter when changing views to avoid filter type mismatches
     setFilter("all");
-    // If switching away from channel view, clear the selected channel
     if (newView !== "channel") {
       setSelectedChannelId(null);
     }
   };
 
-  // Toggle new channel form
   const toggleNewChannelForm = () => {
     setShowNewChannelForm(!showNewChannelForm);
   };
 
   return (
-    <div className="px-5 bg-black text-white flex flex-col">
+    <div className="h-screen px-5 bg-black text-white flex flex-col overflow-hidden">
       {/* Top Navigation Bar */}
       <header className="flex items-center justify-between">
         <div className="py-3 w-full flex items-center justify-between">
@@ -167,9 +158,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Sidebar and Content */}
-        <div className="flex flex-1">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
           <div className="h-lvh">
             <Sidebar
@@ -181,7 +171,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
           </div>
 
           {/* Main Content Area */}
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-y-auto">
             {view === "files" ? (
               <FileBrowser files={filteredContent as Block[]} />
             ) : view === "blocks" ? (

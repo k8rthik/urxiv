@@ -1,16 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Block } from "../types";
 import { format } from "date-fns";
-import {
-  Calendar,
-  Users,
-  Filter,
-  Loader,
-  File,
-  FileText,
-  FileCode,
-  BookOpen,
-} from "lucide-react";
+import { Loader } from "lucide-react";
 import { useTauri } from "../context/TauriContext";
 
 interface ChannelBrowserProps {
@@ -33,7 +24,6 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load channels on component mount
   useEffect(() => {
     loadChannels();
   }, []);
@@ -41,11 +31,8 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
   const loadChannels = async () => {
     setIsLoading(true);
     setError(null);
-
     try {
       const channelsData = await getAllChannels();
-
-      // Load blocks for each channel
       const channelsWithBlocksPromises = channelsData.map(async (channel) => {
         try {
           const blocks = await getBlocksInChannel(channel.id);
@@ -63,7 +50,6 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
           };
         }
       });
-
       const results = await Promise.all(channelsWithBlocksPromises);
       setChannelsWithBlocks(results);
     } catch (err) {
@@ -74,18 +60,15 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
     }
   };
 
-  // Get preview blocks (up to 4)
   const getPreviewBlocks = (blocks: Block[]) => {
     return blocks.slice(0, 4);
   };
 
-  // Filter channels based on search term
   const filteredChannels = channelsWithBlocks.filter((item) => {
     const title = item.channel.content.title?.toLowerCase() || "";
     return title.includes(searchTerm.toLowerCase());
   });
 
-  // Sort channels based on selected sort method
   const sortedChannels = [...filteredChannels].sort((a, b) => {
     if (sortBy === "recent") {
       return (
@@ -93,7 +76,6 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
         new Date(a.channel.updated_at || a.channel.created_at).getTime()
       );
     } else {
-      // Sort alphabetically by title
       const titleA = a.channel.content.title?.toLowerCase() || "";
       const titleB = b.channel.content.title?.toLowerCase() || "";
       return titleA.localeCompare(titleB);
@@ -124,9 +106,8 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
   }
 
   return (
-    <div className="p-6">
-      {/* Channel list */}
-      {filteredChannels.length === 0 ? (
+    <div className="flex-1 overflow-y-auto p-7">
+      {sortedChannels.length === 0 ? (
         <div className="flex items-center justify-center h-64">
           <p className="text-zinc-500 text-sm">
             {channelsWithBlocks.length === 0
@@ -136,14 +117,13 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
         </div>
       ) : (
         <div className="flex flex-col gap-8">
-          {filteredChannels.map((item) => (
+          {sortedChannels.map((item) => (
             <div
               key={item.channel.id}
               className="border border-zinc-800 overflow-hidden cursor-pointer hover:border-zinc-700 transition-colors"
               onClick={() => onChannelClick(item.channel.id)}
             >
-              <div className="flex align-middle p-6">
-                {/* Channel info section - left side */}
+              <div className="flex p-6">
                 <div className="w-64 pr-8 flex-shrink-0">
                   <h3 className="text-2xl font-medium text-white">
                     {item.channel.content.title || "Untitled Channel"}
@@ -158,18 +138,15 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
                         item.channel.updated_at || item.channel.created_at,
                       ),
                       "MMMM d, yyyy",
-                    )}{" "}
+                    )}
                   </div>
                 </div>
-
-                {/* Channel preview section - horizontal row */}
                 <div className="flex flex-grow gap-4 items-center">
-                  {getPreviewBlocks(item.blocks).map((block, index) => (
+                  {getPreviewBlocks(item.blocks).map((block) => (
                     <div
                       key={block.id}
                       className="bg-zinc-900 flex-1 h-64 flex items-center justify-center"
                     >
-                      {/* Show actual content/thumbnails when available */}
                       {block.content.file_url ? (
                         <img
                           src={block.content.file_url}
@@ -183,7 +160,6 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
                       )}
                     </div>
                   ))}
-                  {/* If there are fewer than 4 blocks, fill with empty slots */}
                   {Array.from({
                     length: Math.max(0, 4 - item.blocks.length),
                   }).map((_, index) => (
