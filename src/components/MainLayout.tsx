@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Search, Plus } from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Search, Plus, X } from "lucide-react";
 import { useTauri } from "../context/TauriContext";
 import ChannelView from "./ChannelView";
 import { Block, ViewType, FileFilter } from "../types";
@@ -8,6 +8,7 @@ import FileBrowser from "./FileBrowser";
 import BlockBrowser from "./BlockBrowser";
 import ChannelBrowser from "./ChannelBrowser";
 import Sidebar from "./Sidebar";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface MainLayoutProps {
   initialFiles: Block[];
@@ -25,6 +26,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
   const [showNewChannelForm, setShowNewChannelForm] = useState(false);
   const [view, setView] = useState<ViewType>("files");
   const [filter, setFilter] = useState<FileFilter>("all");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchResults, setSearchResults] = useState<
+    Array<{
+      id: number;
+      type: "file" | "channel" | "block";
+      title: string;
+      parentTitle?: string;
+    }>
+  >([]);
 
   useEffect(() => {
     loadChannels();
@@ -61,10 +72,79 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implement search functionality
-    console.log("Search for:", searchQuery);
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const formattedResults: Array<{
+      id: number;
+      type: "file" | "channel" | "block";
+      title: string;
+      parentTitle?: string;
+    }> = [];
+
+    // Search through files
+    files.forEach((file) => {
+      if (
+        file.content.filename?.toLowerCase().includes(query) ||
+        file.content.path?.toLowerCase().includes(query)
+      ) {
+        formattedResults.push({
+          id: file.id,
+          type: "file",
+          title: file.content.filename || `File ${file.id}`,
+          parentTitle: file.content.path,
+        });
+      }
+    });
+
+    // Search through channels
+    channels.forEach((channel) => {
+      if (
+        channel.content.title?.toLowerCase().includes(query) ||
+        channel.content.description?.toLowerCase().includes(query)
+      ) {
+        formattedResults.push({
+          id: channel.id,
+          type: "channel",
+          title: channel.content.title || `Channel ${channel.id}`,
+        });
+      }
+    });
+
+    // Search through other blocks if necessary
+    blocks.forEach((block) => {
+      // Only include blocks that aren't already included as files or channels
+      if (
+        !formattedResults.some((result) => result.id === block.id) &&
+        ((block.block_type === "channel" &&
+          (block.content.title?.toLowerCase().includes(query) ||
+            block.content.description?.toLowerCase().includes(query))) ||
+          (block.block_type === "file" &&
+            (block.content.filename?.toLowerCase().includes(query) ||
+              block.content.path?.toLowerCase().includes(query))) ||
+          String(block.id).includes(query))
+      ) {
+        formattedResults.push({
+          id: block.id,
+          type: "block",
+          title:
+            block.block_type === "channel"
+              ? block.content.title || `Channel ${block.id}`
+              : block.content.filename || `Block ${block.id}`,
+          parentTitle:
+            block.block_type === "file" ? block.content.path : undefined,
+        });
+      }
+    });
+    setSearchResults(formattedResults.slice(0, 10));
   };
 
   const handleChannelClick = (channelId: number) => {
@@ -126,6 +206,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
     }
   };
 
+  const toggleSearchForm = () => {
+    setIsSearchOpen(!isSearchOpen);
+  };
+
   const toggleNewChannelForm = () => {
     setShowNewChannelForm(!showNewChannelForm);
   };
@@ -144,7 +228,77 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
             </button>
           </div>
           <div className="flex items-center gap-3">
-            <button className="p-1">
+            <AnimatePresence>
+              {isSearchOpen && (
+                <motion.div
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 300, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="relative mr-2"
+                >
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search channels, files, and blocks..."
+                    className="w-full bg-[#1A1A1A] border border-zinc-800 px-3 py-1 text-sm focus:outline-none focus:border-zinc-600"
+                  />
+                  {searchQuery && (
+                    <button
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-zinc-400"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+
+                  {/* Search Results Dropdown */}
+                  {searchResults.length > 0 && (
+                    <div className="absolute top-full left-0 w-full mt-1 bg-[#1A1A1A] border border-zinc-800 shadow-lg z-10 max-h-80 overflow-y-auto">
+                      {searchResults.map((result) => (
+                        <div
+                          key={`${result.type}-${result.id}`}
+                          className="px-3 py-2 hover:bg-zinc-800 cursor-pointer"
+                          onClick={() => handleSearchResultClick(result)}
+                        >
+                          <div className="flex items-center">
+                            {result.type === "file" && (
+                              <File size={14} className="mr-2 text-zinc-400" />
+                            )}
+                            {result.type === "channel" && (
+                              <List size={14} className="mr-2 text-zinc-400" />
+                            )}
+                            {result.type === "block" && (
+                              <Square
+                                size={14}
+                                className="mr-2 text-zinc-400"
+                              />
+                            )}
+                            <div>
+                              <div className="text-sm font-medium">
+                                {result.title}
+                              </div>
+                              {result.parentTitle && (
+                                <div className="text-xs text-zinc-500">
+                                  in {result.parentTitle}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <button
+              className={`p-1 ${isSearchOpen ? "text-white" : "text-zinc-400 hover:text-white"}`}
+              onClick={toggleSearchForm}
+            >
               <Search size={18} />
             </button>
             <button
