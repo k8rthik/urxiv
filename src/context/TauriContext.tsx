@@ -1,12 +1,21 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+// src/context/TauriContext.tsx
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import {
+  TauriService,
+  WorkspaceService,
+  BlockService,
+  ChannelService,
+  FileService,
+} from "../services";
 import { Block } from "../types";
-import { open } from "@tauri-apps/plugin-dialog";
 
-// For Tauri 2.0
-// We'll use these once Tauri is initialized
-let tauriInvoke: any = null;
-let tauriDialog: any = null;
-
+// Define the context interface to match the existing one
 interface TauriContextType {
   isReady: boolean;
   hasWorkspace: boolean;
@@ -23,40 +32,36 @@ interface TauriContextType {
   disconnectBlocks: (sourceId: number, targetId: number) => Promise<void>;
   deleteBlock: (blockId: number) => Promise<void>;
   updateBlockContent: (blockId: number, content: any) => Promise<Block>;
+  openFile: (filePath: string) => Promise<boolean>;
 }
 
 const TauriContext = createContext<TauriContextType | undefined>(undefined);
 
-export const TauriProvider: React.FC<{ children: React.ReactNode }> = ({
+export const TauriProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
+  // Initialize services
+  const tauriService = TauriService.getInstance();
+  const workspaceService = new WorkspaceService();
+  const blockService = new BlockService();
+  const channelService = new ChannelService();
+  const fileService = new FileService();
+
+  // State management
   const [isReady, setIsReady] = useState(false);
   const [hasWorkspace, setHasWorkspace] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Initialize Tauri
   useEffect(() => {
     const initTauri = async () => {
       try {
-        // Dynamically import Tauri APIs to ensure they're loaded only in the browser
-        if (typeof window !== "undefined") {
-          console.log("Hello");
-          // Check if Tauri is available
-          if (window.__TAURI__) {
-            console.log("Hello");
-            // Access invoke directly
-            tauriInvoke = window.__TAURI__.core.invoke;
-
-            tauriDialog = window.__TAURI__.dialog;
-
-            console.log("Dialog");
-            setIsReady(true);
-
-            // Check workspace status after Tauri is ready
-            checkWorkspaceStatus();
-          } else {
-            console.error("Tauri is not available");
-            setIsLoading(false);
-          }
+        const initialized = await tauriService.initialize();
+        setIsReady(initialized);
+        if (initialized) {
+          checkWorkspaceStatus();
+        } else {
+          setIsLoading(false);
         }
       } catch (err) {
         console.error("Failed to initialize Tauri:", err);
@@ -67,10 +72,11 @@ export const TauriProvider: React.FC<{ children: React.ReactNode }> = ({
     initTauri();
   }, []);
 
+  // Check workspace status
   const checkWorkspaceStatus = async () => {
     try {
       setIsLoading(true);
-      const status = await tauriInvoke("get_workspace_status");
+      const status = await workspaceService.getWorkspaceStatus();
       setHasWorkspace(status);
     } catch (error) {
       console.error("Failed to check workspace status:", error);
@@ -80,216 +86,151 @@ export const TauriProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const selectWorkspace = async () => {
-    if (!isReady || !tauriDialog) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      setIsLoading(true);
-      // Open folder selection dialog
-      const selected = await tauriDialog.open({
-        directory: true,
-        multiple: false,
-        title: "Select Workspace Directory",
-      });
-
-      if (selected && !Array.isArray(selected)) {
-        // Set the selected directory as workspace
-        await tauriInvoke("select_workspace", { path: selected });
-        setHasWorkspace(true);
-      }
-    } catch (error) {
-      console.error("Failed to select workspace:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const indexWorkspace = async (): Promise<Block[]> => {
-    if (!isReady) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      setIsLoading(true);
-      const files = await tauriInvoke("index_workspace_files");
-      return files;
-    } catch (error) {
-      console.error("Failed to index workspace:", error);
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getAllBlocks = async (): Promise<Block[]> => {
-    if (!isReady) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      return await tauriInvoke("get_all_blocks");
-    } catch (error) {
-      console.error("Failed to get all blocks:", error);
-      return [];
-    }
-  };
-
-  const getAllFiles = async (): Promise<Block[]> => {
-    if (!isReady) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      return await tauriInvoke("get_all_files");
-    } catch (error) {
-      console.error("Failed to get all files:", error);
-      return [];
-    }
-  };
-
-  const getAllChannels = async (): Promise<Block[]> => {
-    if (!isReady) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      return await tauriInvoke("get_all_channels");
-    } catch (error) {
-      console.error("Failed to get all channels:", error);
-      return [];
-    }
-  };
-
-  const createChannel = async (
-    title: string,
-    description: string,
-  ): Promise<Block> => {
-    if (!isReady) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      return await tauriInvoke("create_channel", { title, description });
-    } catch (error) {
-      console.error("Failed to create channel:", error);
-      throw error;
-    }
-  };
-
-  const getBlock = async (blockId: number): Promise<Block> => {
-    if (!isReady) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      return await tauriInvoke("get_block", { blockId });
-    } catch (error) {
-      console.error(`Failed to get block ${blockId}:`, error);
-      throw error;
-    }
-  };
-
-  const getBlocksInChannel = async (channelId: number): Promise<Block[]> => {
-    if (!isReady) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      return await tauriInvoke("get_blocks_in_channel", { channelId });
-    } catch (error) {
-      console.error(`Failed to get blocks in channel ${channelId}:`, error);
-      return [];
-    }
-  };
-
-  const connectBlocks = async (
-    sourceId: number,
-    targetId: number,
-  ): Promise<void> => {
-    if (!isReady) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      await tauriInvoke("connect_blocks", { sourceId, targetId });
-    } catch (error) {
-      console.error(
-        `Failed to connect blocks ${sourceId} and ${targetId}:`,
-        error,
-      );
-      throw error;
-    }
-  };
-
-  const disconnectBlocks = async (
-    sourceId: number,
-    targetId: number,
-  ): Promise<void> => {
-    if (!isReady) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      await tauriInvoke("disconnect_blocks", { sourceId, targetId });
-    } catch (error) {
-      console.error(
-        `Failed to disconnect blocks ${sourceId} and ${targetId}:`,
-        error,
-      );
-      throw error;
-    }
-  };
-
-  const deleteBlock = async (blockId: number): Promise<void> => {
-    if (!isReady) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      await tauriInvoke("delete_block", { blockId });
-    } catch (error) {
-      console.error(`Failed to delete block ${blockId}:`, error);
-      throw error;
-    }
-  };
-
-  const updateBlockContent = async (
-    blockId: number,
-    newContent: any,
-  ): Promise<Block> => {
-    if (!isReady) {
-      throw new Error("Tauri is not ready yet");
-    }
-
-    try {
-      return await tauriInvoke("update_block_content", {
-        blockId,
-        newContent,
-      });
-    } catch (error) {
-      console.error(`Failed to update block ${blockId}:`, error);
-      throw error;
-    }
-  };
-
+  // Context value - wraps service calls to maintain the same interface
   const contextValue: TauriContextType = {
     isReady,
     hasWorkspace,
     isLoading,
-    selectWorkspace,
-    indexWorkspace,
-    getAllBlocks,
-    getAllFiles,
-    getAllChannels,
-    createChannel,
-    getBlock,
-    getBlocksInChannel,
-    connectBlocks,
-    disconnectBlocks,
-    deleteBlock,
-    updateBlockContent,
+
+    // Workspace functions
+    selectWorkspace: async () => {
+      setIsLoading(true);
+      try {
+        const selected = await workspaceService.selectWorkspace();
+        if (selected) {
+          setHasWorkspace(true);
+        }
+      } catch (error) {
+        console.error("Failed to select workspace:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+
+    indexWorkspace: async () => {
+      setIsLoading(true);
+      try {
+        const files = await workspaceService.indexWorkspace();
+        return files;
+      } catch (error) {
+        console.error("Failed to index workspace:", error);
+        return [];
+      } finally {
+        setIsLoading(false);
+      }
+    },
+
+    // Block functions
+    getAllBlocks: async () => {
+      try {
+        return await blockService.getAllBlocks();
+      } catch (error) {
+        console.error("Failed to get all blocks:", error);
+        return [];
+      }
+    },
+
+    getBlock: async (blockId: number) => {
+      try {
+        return await blockService.getBlock(blockId);
+      } catch (error) {
+        console.error(`Failed to get block ${blockId}:`, error);
+        throw error;
+      }
+    },
+
+    updateBlockContent: async (blockId: number, content: any) => {
+      try {
+        return await blockService.updateBlockContent(blockId, content);
+      } catch (error) {
+        console.error(`Failed to update block ${blockId}:`, error);
+        throw error;
+      }
+    },
+
+    deleteBlock: async (blockId: number) => {
+      try {
+        await blockService.deleteBlock(blockId);
+      } catch (error) {
+        console.error(`Failed to delete block ${blockId}:`, error);
+        throw error;
+      }
+    },
+
+    connectBlocks: async (sourceId: number, targetId: number) => {
+      try {
+        await blockService.connectBlocks(sourceId, targetId);
+      } catch (error) {
+        console.error(
+          `Failed to connect blocks ${sourceId} and ${targetId}:`,
+          error,
+        );
+        throw error;
+      }
+    },
+
+    disconnectBlocks: async (sourceId: number, targetId: number) => {
+      try {
+        await blockService.disconnectBlocks(sourceId, targetId);
+      } catch (error) {
+        console.error(
+          `Failed to disconnect blocks ${sourceId} and ${targetId}:`,
+          error,
+        );
+        throw error;
+      }
+    },
+
+    // Channel functions
+    getAllChannels: async () => {
+      try {
+        return await channelService.getAllChannels();
+      } catch (error) {
+        console.error("Failed to get all channels:", error);
+        return [];
+      }
+    },
+
+    createChannel: async (title: string, description: string) => {
+      try {
+        const channel = await channelService.createChannel(title, description);
+        if (channel) {
+          return channel;
+        }
+        throw new Error("Failed to create channel");
+      } catch (error) {
+        console.error("Failed to create channel:", error);
+        throw error;
+      }
+    },
+
+    getBlocksInChannel: async (channelId: number) => {
+      try {
+        return await channelService.getBlocksInChannel(channelId);
+      } catch (error) {
+        console.error(`Failed to get blocks in channel ${channelId}:`, error);
+        return [];
+      }
+    },
+
+    // File functions
+    getAllFiles: async () => {
+      try {
+        return await fileService.getAllFiles();
+      } catch (error) {
+        console.error("Failed to get all files:", error);
+        return [];
+      }
+    },
+
+    openFile: async (filePath: string) => {
+      try {
+        return await fileService.openFile(filePath);
+      } catch (error) {
+        console.error("Failed to open file:", error);
+        return false;
+      }
+    },
   };
 
   return (
