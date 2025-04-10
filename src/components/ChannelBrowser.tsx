@@ -1,8 +1,14 @@
+// src/components/ChannelBrowser.tsx (refactored)
 import React, { useState, useEffect } from "react";
 import { Block } from "../types";
+import { useTauri } from "../context/TauriContext";
 import { format } from "date-fns";
 import { Loader } from "lucide-react";
-import { useTauri } from "../context/TauriContext";
+import { channelBlockToBrowserItem } from "../adapters/browserAdapters";
+import { BrowserItem } from "../types/browser";
+
+// We need a custom renderer for channels since they're more complex
+import ChannelCard from "./ChannelCard"; // We'll create this component next
 
 interface ChannelBrowserProps {
   onChannelClick: (channelId: number) => void;
@@ -60,27 +66,34 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
     }
   };
 
-  const getPreviewBlocks = (blocks: Block[]) => {
-    return blocks.slice(0, 4);
+  // Convert channelsWithBlocks to browserItems
+  const browserItems: BrowserItem[] = channelsWithBlocks.map((cwb) => {
+    const channelItem = channelBlockToBrowserItem(cwb.channel);
+    return {
+      ...channelItem,
+      metadata: {
+        ...channelItem.metadata,
+        blocks: cwb.blocks,
+        blockCount: cwb.blockCount,
+      },
+    };
+  });
+
+  // Custom renderer for channel items
+  const renderChannelItem = (item: BrowserItem) => {
+    const blocks = item.metadata?.blocks || [];
+    return (
+      <ChannelCard
+        key={item.id}
+        title={item.title}
+        description={item.subtitle || ""}
+        blocks={blocks}
+        blockCount={item.metadata?.blockCount || 0}
+        updatedAt={item.updatedAt}
+        onClick={() => onChannelClick(item.id)}
+      />
+    );
   };
-
-  const filteredChannels = channelsWithBlocks.filter((item) => {
-    const title = item.channel.content.title?.toLowerCase() || "";
-    return title.includes(searchTerm.toLowerCase());
-  });
-
-  const sortedChannels = [...filteredChannels].sort((a, b) => {
-    if (sortBy === "recent") {
-      return (
-        new Date(b.channel.updated_at || b.channel.created_at).getTime() -
-        new Date(a.channel.updated_at || a.channel.created_at).getTime()
-      );
-    } else {
-      const titleA = a.channel.content.title?.toLowerCase() || "";
-      const titleB = b.channel.content.title?.toLowerCase() || "";
-      return titleA.localeCompare(titleB);
-    }
-  });
 
   if (isLoading) {
     return (
@@ -105,75 +118,50 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
     );
   }
 
+  // Custom filter-sort for channels
+  const filterSortChannels = (
+    items: BrowserItem[],
+    options: { searchTerm?: string; sortBy?: string },
+  ) => {
+    let filtered = [...items];
+
+    // Apply search filter
+    if (options.searchTerm) {
+      const searchLower = options.searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (item) =>
+          item.title.toLowerCase().includes(searchLower) ||
+          (item.subtitle && item.subtitle.toLowerCase().includes(searchLower)),
+      );
+    }
+
+    // Apply sorting
+    if (options.sortBy === "recent") {
+      filtered.sort(
+        (a, b) =>
+          new Date(b.updatedAt || b.createdAt).getTime() -
+          new Date(a.updatedAt || a.createdAt).getTime(),
+      );
+    } else if (options.sortBy === "alphabetical") {
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    return filtered;
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-7">
-      {sortedChannels.length === 0 ? (
+      {browserItems.length === 0 ? (
         <div className="flex items-center justify-center h-64">
           <p className="text-zinc-500 text-sm">
-            {channelsWithBlocks.length === 0
-              ? "No channels have been created yet."
-              : "No channels match your search."}
+            No channels have been created yet.
           </p>
         </div>
       ) : (
         <div className="flex flex-col gap-8">
-          {sortedChannels.map((item) => (
-            <div
-              key={item.channel.id}
-              className="border border-zinc-800 overflow-hidden cursor-pointer hover:border-zinc-700 transition-colors"
-              onClick={() => onChannelClick(item.channel.id)}
-            >
-              <div className="flex p-6">
-                <div className="w-64 pr-8 flex-shrink-0">
-                  <h3 className="text-2xl font-medium text-white">
-                    {item.channel.content.title || "Untitled Channel"}
-                  </h3>
-                  <div className="text-zinc-500 mt-1 text-sm">
-                    {item.blockCount} blocks
-                  </div>
-                  <div className="text-zinc-500 mt-1 text-sm">
-                    last edited{" "}
-                    {format(
-                      new Date(
-                        item.channel.updated_at || item.channel.created_at,
-                      ),
-                      "MMMM d, yyyy",
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-grow gap-4 items-center">
-                  {getPreviewBlocks(item.blocks).map((block) => (
-                    <div
-                      key={block.id}
-                      className="bg-zinc-900 flex-1 h-64 flex items-center justify-center"
-                    >
-                      {block.content.file_url ? (
-                        <img
-                          src={block.content.file_url}
-                          alt={block.content.title || ""}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-zinc-800">
-                          <span className="text-zinc-500">···</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {Array.from({
-                    length: Math.max(0, 4 - item.blocks.length),
-                  }).map((_, index) => (
-                    <div
-                      key={`empty-${index}`}
-                      className="flex-1 h-64 flex items-center justify-center bg-zinc-800"
-                    >
-                      <span className="text-zinc-500 text-xl">···</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
+          {filterSortChannels(browserItems, { searchTerm, sortBy }).map(
+            renderChannelItem,
+          )}
         </div>
       )}
     </div>
