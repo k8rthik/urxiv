@@ -1,2 +1,2 @@
-pub mod blocks;
-pub mod workspace;
+pub mod block_commands;
+pub mod workspace_commands;
