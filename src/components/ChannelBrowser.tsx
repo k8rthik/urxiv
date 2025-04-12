@@ -39,25 +39,59 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
     setError(null);
     try {
       const channelsData = await getAllChannels();
-      const channelsWithBlocksPromises = channelsData.map(async (channel) => {
-        try {
-          const blocks = await getBlocksInChannel(channel.id);
-          return {
-            channel,
-            blocks,
-            blockCount: blocks.length,
-          };
-        } catch (err) {
-          console.error(`Failed to get blocks for channel ${channel.id}:`, err);
-          return {
-            channel,
-            blocks: [],
-            blockCount: 0,
-          };
-        }
-      });
-      const results = await Promise.all(channelsWithBlocksPromises);
-      setChannelsWithBlocks(results);
+
+      // Initial render with just channel data
+      const initialChannelsWithBlocks = channelsData.map((channel) => ({
+        channel,
+        blocks: [],
+        blockCount: 0,
+      }));
+      setChannelsWithBlocks(initialChannelsWithBlocks);
+
+      // Limit concurrent requests to avoid overwhelming the backend
+      const batchSize = 3;
+      const results = [];
+
+      for (let i = 0; i < channelsData.length; i += batchSize) {
+        const batch = channelsData.slice(i, i + batchSize);
+        const batchPromises = batch.map(async (channel) => {
+          try {
+            const blocks = await getBlocksInChannel(channel.id);
+            return {
+              channel,
+              blocks,
+              blockCount: blocks.length,
+            };
+          } catch (err) {
+            console.error(
+              `Failed to get blocks for channel ${channel.id}:`,
+              err,
+            );
+            return {
+              channel,
+              blocks: [],
+              blockCount: 0,
+            };
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...batchResults);
+
+        // Update state incrementally with each batch
+        setChannelsWithBlocks((prev) => {
+          const updated = [...prev];
+          batchResults.forEach((result) => {
+            const index = updated.findIndex(
+              (item) => item.channel.id === result.channel.id,
+            );
+            if (index !== -1) {
+              updated[index] = result;
+            }
+          });
+          return updated;
+        });
+      }
     } catch (err) {
       console.error("Failed to load channels:", err);
       setError("Failed to load channels. Please try again.");
@@ -65,7 +99,6 @@ const ChannelBrowser: React.FC<ChannelBrowserProps> = ({ onChannelClick }) => {
       setIsLoading(false);
     }
   };
-
   // Convert channelsWithBlocks to browserItems
   const browserItems: BrowserItem[] = channelsWithBlocks.map((cwb) => {
     const channelItem = channelBlockToBrowserItem(cwb.channel);
