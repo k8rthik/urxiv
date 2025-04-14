@@ -12,7 +12,6 @@ use repositories::block_repository::FileSystemBlockRepository;
 use repositories::workspace_repository::FileSystemWorkspaceRepository;
 use services::block_service::BlockService;
 use services::workspace_service::WorkspaceService;
-use std::path::PathBuf;
 use std::sync::Arc;
 use storage::FileSystemStorage;
 use tauri::Manager;
@@ -24,7 +23,8 @@ pub fn run() {
         .setup(|app| {
             // Set up app data directory
             let app_data_dir = app
-                .path_resolver()
+                .app_handle()
+                .path()
                 .app_data_dir()
                 .expect("Failed to get app data directory");
 

@@ -1,9 +1,8 @@
 // src-tauri/src/repositories/block_repository.rs
 use crate::domain::block::Block;
-use crate::errors::{AppError, AppResult, BlockError};
+use crate::errors::{AppResult, BlockError};
 use crate::storage::Storage;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 pub trait BlockRepository: Send + Sync {

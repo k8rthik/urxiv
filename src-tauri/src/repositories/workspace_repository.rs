@@ -1,6 +1,6 @@
 // src-tauri/src/repositories/workspace_repository.rs
 use crate::domain::workspace::Workspace;
-use crate::errors::{AppError, AppResult, WorkspaceError};
+use crate::errors::AppResult;
 use crate::storage::Storage;
 use std::sync::{Arc, Mutex};
 

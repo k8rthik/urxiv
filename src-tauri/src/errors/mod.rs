@@ -1,5 +1,4 @@
 // src-tauri/src/errors/mod.rs
-use std::fmt;
 use std::io;
 use std::sync::PoisonError;
 use thiserror::Error;

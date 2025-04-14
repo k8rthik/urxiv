@@ -1,5 +1,6 @@
 // src-tauri/src/domain/block.rs
 use chrono::{DateTime, Utc};
+use serde::de::Error as SerdeError;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
@@ -118,7 +119,9 @@ impl Block {
             self.content = serde_json::to_value(content)?;
             Ok(())
         } else {
-            Err(serde_json::Error::custom("Block is not a channel"))
+            Err(serde_json::Error::custom(
+                "Block is not a channel".to_string(),
+            ))
         }
     }
 
@@ -127,7 +130,7 @@ impl Block {
             self.content = serde_json::to_value(content)?;
             Ok(())
         } else {
-            Err(serde_json::Error::custom("Block is not a file"))
+            Err(serde_json::Error::custom("Block is not a file".to_string()))
         }
     }
 
