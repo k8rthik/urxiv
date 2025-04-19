@@ -2,8 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { Block } from "../types";
 import { open } from "@tauri-apps/plugin-dialog";
 
-// For Tauri 2.0
-// We'll use these once Tauri is initialized
 let tauriInvoke: any = null;
 let tauriDialog: any = null;
 

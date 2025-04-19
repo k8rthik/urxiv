@@ -1,4 +1,3 @@
-// src-tauri/src/lib.rs
 mod app_state;
 mod commands;
 mod domain;
