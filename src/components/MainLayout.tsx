@@ -4,9 +4,9 @@ import { useTauri } from "../context/TauriContext";
 import ChannelView from "./ChannelView";
 import { Block, ViewType, FileFilter } from "../types";
 import NewChannel from "./NewChannel";
-import FileBrowser from "./FileBrowser";
-import BlockBrowser from "./BlockBrowser";
-import ChannelBrowser from "./ChannelBrowser";
+import FileBrowser from "./browsers/FileBrowser";
+import BlockBrowser from "./browsers/BlockBrowser";
+import ChannelBrowser from "./browsers/ChannelBrowser";
 import Sidebar from "./Sidebar";
 import { AnimatePresence, motion } from "framer-motion";
 

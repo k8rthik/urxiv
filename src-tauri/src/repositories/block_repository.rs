@@ -1,4 +1,3 @@
-// src-tauri/src/repositories/block_repository.rs
 use crate::domain::block::Block;
 use crate::errors::{AppResult, BlockError};
 use crate::storage::Storage;
