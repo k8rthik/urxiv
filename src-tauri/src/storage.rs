@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use crate::error::{AppError, Result};
+use crate::error::Result;
 use crate::models::Block;
 
 // Initialize application directories
@@ -73,11 +73,7 @@ pub fn load_blocks_cache(blocks_dir: &Path) -> HashMap<u64, Block> {
 }
 
 // Save a block to disk and update cache
-pub fn save_block(
-    block: &Block,
-    data_dir: &Path,
-    cache: &mut HashMap<u64, Block>,
-) -> Result<()> {
+pub fn save_block(block: &Block, data_dir: &Path, cache: &mut HashMap<u64, Block>) -> Result<()> {
     let block_path = data_dir.join("blocks").join(format!("{}.json", block.id));
     let json = serde_json::to_string_pretty(&block)?;
     fs::write(block_path, json)?;

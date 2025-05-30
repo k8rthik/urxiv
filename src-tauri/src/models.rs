@@ -7,8 +7,6 @@ use std::sync::Mutex;
 
 use crate::repository::FileBlockRepository;
 
-use crate::error::AppError;
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ChannelContent {
     pub title: String,

@@ -5,7 +5,7 @@ use tauri::State;
 use walkdir::WalkDir;
 
 use crate::error::{AppError, Result};
-use crate::models::{AppState, Block};
+use crate::models::{AppState, Block, BlockKind};
 use crate::repository::{BlockRepository, FileBlockRepository};
 use crate::storage;
 
@@ -25,12 +25,11 @@ pub fn select_workspace(path: String, state: State<AppState>) -> Result<()> {
     let blocks_dir = data_dir.join("blocks");
     let highest_id = storage::find_highest_block_id(&blocks_dir);
     let blocks_cache = storage::load_blocks_cache(&blocks_dir);
-    let mut repository = FileBlockRepository::new(data_dir.clone(), blocks_cache);
+    let repository = FileBlockRepository::new(data_dir.clone(), blocks_cache);
 
     // Update state
     let all_blocks = repository.all()?;
-    *state.blocks_cache.lock().unwrap() =
-        all_blocks.iter().cloned().map(|b| (b.id, b)).collect();
+    *state.blocks_cache.lock().unwrap() = all_blocks.iter().cloned().map(|b| (b.id, b)).collect();
     *state.repository.lock().unwrap() = Some(repository);
     state.next_id.store(highest_id + 1, Ordering::SeqCst);
 

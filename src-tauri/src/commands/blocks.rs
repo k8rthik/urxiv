@@ -1,13 +1,11 @@
 use chrono::Utc;
 use serde_json::Value;
-use std::fs;
 use std::sync::atomic::Ordering;
 use tauri::State;
 
 use crate::error::{AppError, Result};
 use crate::models::{AppState, Block, BlockKind};
-use crate::repository::{BlockRepository, FileBlockRepository};
-use crate::storage;
+use crate::repository::BlockRepository;
 
 #[tauri::command]
 pub fn get_all_blocks(state: State<AppState>) -> Result<Vec<Block>> {
@@ -37,11 +35,7 @@ pub fn get_all_channels(state: State<AppState>) -> Result<Vec<Block>> {
 }
 
 #[tauri::command]
-pub fn create_channel(
-    title: String,
-    description: String,
-    state: State<AppState>,
-) -> Result<Block> {
+pub fn create_channel(title: String, description: String, state: State<AppState>) -> Result<Block> {
     let mut repo_lock = state.repository.lock().unwrap();
     let repo = repo_lock.as_mut().ok_or(AppError::NoWorkspaceSelected)?;
 
@@ -61,10 +55,7 @@ pub fn get_block(block_id: u64, state: State<AppState>) -> Result<Block> {
 }
 
 #[tauri::command]
-pub fn get_blocks_in_channel(
-    channel_id: u64,
-    state: State<AppState>,
-) -> Result<Vec<Block>> {
+pub fn get_blocks_in_channel(channel_id: u64, state: State<AppState>) -> Result<Vec<Block>> {
     let repo_lock = state.repository.lock().unwrap();
     let repo = repo_lock.as_ref().ok_or(AppError::NoWorkspaceSelected)?;
 
@@ -86,11 +77,7 @@ pub fn get_blocks_in_channel(
 }
 
 #[tauri::command]
-pub fn connect_blocks(
-    source_id: u64,
-    target_id: u64,
-    state: State<AppState>,
-) -> Result<()> {
+pub fn connect_blocks(source_id: u64, target_id: u64, state: State<AppState>) -> Result<()> {
     let mut repo_lock = state.repository.lock().unwrap();
     let repo = repo_lock.as_mut().ok_or(AppError::NoWorkspaceSelected)?;
 
@@ -108,11 +95,7 @@ pub fn connect_blocks(
 }
 
 #[tauri::command]
-pub fn disconnect_blocks(
-    source_id: u64,
-    target_id: u64,
-    state: State<AppState>,
-) -> Result<()> {
+pub fn disconnect_blocks(source_id: u64, target_id: u64, state: State<AppState>) -> Result<()> {
     let mut repo_lock = state.repository.lock().unwrap();
     let repo = repo_lock.as_mut().ok_or(AppError::NoWorkspaceSelected)?;
 
