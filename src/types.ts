@@ -18,8 +18,9 @@ export function isFileBlock(block: Block): boolean {
 }
 
 export type ViewType = "files" | "channels" | "blocks" | "channel";
-export type FileFilter = "all" | "pdf" | "epub" | "code" | "text";
-export type BlockFilter = "all" | "channel" | "file";
+// Changed from predefined union to flexible string to support dynamic filters
+export type FileFilter = string; // "all" | any dynamic file type
+export type BlockFilter = string; // "all" | any dynamic block type
 
 // Deprecated: Use isChannelBlock instead
 export function isChannel(block: Block): boolean {
