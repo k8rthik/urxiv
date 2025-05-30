@@ -39,16 +39,13 @@ export const TauriProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         // Dynamically import Tauri APIs to ensure they're loaded only in the browser
         if (typeof window !== "undefined") {
-          console.log("Hello");
           // Check if Tauri is available
           if (window.__TAURI__) {
-            console.log("Hello");
             // Access invoke directly
             tauriInvoke = window.__TAURI__.core.invoke;
 
             tauriDialog = window.__TAURI__.dialog;
 
-            console.log("Dialog");
             setIsReady(true);
 
             // Check workspace status after Tauri is ready

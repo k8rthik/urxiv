@@ -1,12 +1,30 @@
 // Block structure that matches the Rust backend
-export interface Block {
+export interface BaseBlock {
   id: number;
   created_at: string;
   updated_at: string;
-  block_type: string; // "channel" or "file" or potentially other types
-  content: any; // Flexible content structure based on type
-  connections: number[]; // IDs of blocks connected to this one
+  connections: number[];
 }
+
+export interface ChannelBlock extends BaseBlock {
+  block_type: "channel";
+  content: {
+    title: string;
+    description: string;
+  };
+}
+
+export interface FileBlock extends BaseBlock {
+  block_type: "file";
+  content: {
+    path: string;
+    filename: string;
+    file_type: string;
+    full_path: string;
+  };
+}
+
+export type Block = ChannelBlock | FileBlock;
 
 // Type guards for block types
 export function isChannelBlock(block: Block): boolean {
@@ -24,6 +42,6 @@ export type BlockFilter = "all" | "channel" | "file";
 export function isChannel(block: Block): boolean {
   return block.block_type === "channel";
 }
-export function isFiel(block: Block): boolean {
+export function isFile(block: Block): boolean {
   return block.block_type === "file";
 }
