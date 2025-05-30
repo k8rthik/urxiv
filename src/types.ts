@@ -21,9 +21,12 @@ export type ViewType = "files" | "channels" | "blocks" | "channel";
 export type FileFilter = "all" | "pdf" | "epub" | "code" | "text";
 export type BlockFilter = "all" | "channel" | "file";
 
+// Deprecated: Use isChannelBlock instead
 export function isChannel(block: Block): boolean {
   return block.block_type === "channel";
 }
-export function isFiel(block: Block): boolean {
+
+// Fixed typo: Use isFileBlock instead  
+export function isFile(block: Block): boolean {
   return block.block_type === "file";
 }

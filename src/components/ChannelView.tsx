@@ -9,6 +9,7 @@ import {
   FileText,
   BookOpen,
   Check,
+  Hash,
 } from "lucide-react";
 import { useTauri } from "../context/TauriContext";
 import { Block } from "../types";
@@ -30,7 +31,7 @@ const ChannelView: React.FC<ChannelViewProps> = ({
     isReady,
     getBlock,
     getBlocksInChannel,
-    getAllFiles,
+    getAllBlocks,
     connectBlocks,
     disconnectBlocks,
     updateBlockContent,
@@ -45,11 +46,11 @@ const ChannelView: React.FC<ChannelViewProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [availableFiles, setAvailableFiles] = useState<Block[]>([]);
-  const [selectedFileIds, setSelectedFileIds] = useState<Set<number>>(
+  const [availableBlocks, setAvailableBlocks] = useState<Block[]>([]);
+  const [selectedBlockIds, setSelectedBlockIds] = useState<Set<number>>(
     new Set(),
   );
-  const [isAddingFiles, setIsAddingFiles] = useState(false);
+  const [isAddingBlocks, setIsAddingBlocks] = useState(false);
 
   // Initialize Tauri shell API
   useEffect(() => {
@@ -124,67 +125,69 @@ const ChannelView: React.FC<ChannelViewProps> = ({
   const handleDeleteChannel = async () => {
     if (!channel) return;
 
-    if (
-      window.confirm(
-        "Are you sure you want to delete this channel? This action cannot be undone.",
-      )
-    ) {
-      try {
-        await deleteBlock(channelId);
-        if (onChannelUpdated) {
-          onChannelUpdated();
-        }
-      } catch (err) {
-        console.error("Failed to delete channel:", err);
-        setError("Failed to delete channel");
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this channel? This action cannot be undone.",
+    );
+
+    if (!confirmed) {
+      return; // User cancelled, do nothing
+    }
+
+    try {
+      await deleteBlock(channelId);
+      if (onChannelUpdated) {
+        onChannelUpdated();
       }
+    } catch (err) {
+      console.error("Failed to delete channel:", err);
+      setError("Failed to delete channel");
     }
   };
 
-  const openAddFilesModal = async () => {
+  const openAddBlocksModal = async () => {
     try {
       // Reset selection state
-      setSelectedFileIds(new Set());
-      setIsAddingFiles(false);
+      setSelectedBlockIds(new Set());
+      setIsAddingBlocks(false);
 
-      // Get all files
-      const allFiles = await getAllFiles();
+      // Get all blocks
+      const allBlocks = await getAllBlocks();
 
-      // Filter out files that are already in the channel
+      // Filter out blocks that are already in the channel and exclude self
       const blockIds = blocks.map((block) => block.id);
-      const filteredFiles = allFiles.filter(
-        (file) => !blockIds.includes(file.id),
+      const filteredBlocks = allBlocks.filter(
+        (block) => !blockIds.includes(block.id) && block.id !== channelId,
       );
 
-      setAvailableFiles(filteredFiles);
+      setAvailableBlocks(filteredBlocks);
       setShowAddModal(true);
     } catch (err) {
-      console.error("Failed to get available files:", err);
-      setError("Failed to load available files");
+      console.error("Failed to get available blocks:", err);
+      setError("Failed to load available blocks");
     }
   };
 
-  const handleFileSelect = (fileId: number) => {
-    setSelectedFileIds((prevSelected) => {
+  const handleBlockSelect = (blockId: number) => {
+    setSelectedBlockIds((prevSelected) => {
       const newSelected = new Set(prevSelected);
-      if (newSelected.has(fileId)) {
-        newSelected.delete(fileId);
+      if (newSelected.has(blockId)) {
+        newSelected.delete(blockId);
       } else {
-        newSelected.add(fileId);
+        newSelected.add(blockId);
       }
       return newSelected;
     });
   };
 
-  const addFilesToChannel = async () => {
-    if (selectedFileIds.size === 0) return;
+  const addBlocksToChannel = async () => {
+    if (selectedBlockIds.size === 0) return;
 
     try {
-      setIsAddingFiles(true);
+      setIsAddingBlocks(true);
 
-      // Connect all selected files to the channel
-      const promises = Array.from(selectedFileIds).map((fileId) =>
-        connectBlocks(channelId, fileId),
+      // Connect all selected blocks to the channel
+      const promises = Array.from(selectedBlockIds).map((blockId) =>
+        connectBlocks(channelId, blockId),
       );
 
       await Promise.all(promises);
@@ -196,53 +199,95 @@ const ChannelView: React.FC<ChannelViewProps> = ({
       // Close modal
       setShowAddModal(false);
     } catch (err) {
-      console.error("Failed to add files to channel:", err);
-      setError("Failed to add files to channel");
+      console.error("Failed to add blocks to channel:", err);
+      setError("Failed to add blocks to channel");
     } finally {
-      setIsAddingFiles(false);
+      setIsAddingBlocks(false);
     }
   };
 
-  const removeFileFromChannel = async (fileId: number) => {
-    if (window.confirm("Remove this file from the channel?")) {
-      try {
-        await disconnectBlocks(channelId, fileId);
-
-        // Update local state
-        setBlocks(blocks.filter((block) => block.id !== fileId));
-      } catch (err) {
-        console.error("Failed to remove file from channel:", err);
-        setError("Failed to remove file from channel");
-      }
-    }
-  };
-
-  const handleOpenFile = async (filePath: string) => {
-    if (!tauriShell) {
-      console.error("Tauri shell API is not available");
-      return;
+  const removeBlockFromChannel = async (blockId: number) => {
+    const confirmed = window.confirm("Remove this block from the channel?");
+    
+    if (!confirmed) {
+      return; // User cancelled, do nothing
     }
 
     try {
-      await tauriShell.open(filePath);
-    } catch (error) {
-      console.error("Failed to open file:", error);
+      await disconnectBlocks(channelId, blockId);
+
+      // Update local state
+      setBlocks(blocks.filter((block) => block.id !== blockId));
+    } catch (err) {
+      console.error("Failed to remove block from channel:", err);
+      setError("Failed to remove block from channel");
     }
   };
 
-  const getFileIcon = (fileType: string) => {
-    switch (fileType) {
-      case "pdf":
-        return <File size={18} />;
-      case "epub":
-        return <BookOpen size={18} />;
-      case "code":
-        return <FileCode size={18} />;
-      case "text":
-        return <FileText size={18} />;
-      default:
-        return <File size={18} />;
+  const handleOpenBlock = async (block: Block) => {
+    if (block.block_type === "file" && block.content.full_path) {
+      if (!tauriShell) {
+        console.error("Tauri shell API is not available");
+        return;
+      }
+
+      try {
+        await tauriShell.open(block.content.full_path);
+      } catch (error) {
+        console.error("Failed to open file:", error);
+      }
+    } else if (block.block_type === "channel") {
+      // For channel blocks, we could navigate to the channel or show a preview
+      console.log("Channel block clicked:", block.id);
     }
+  };
+
+  const getBlockIcon = (block: Block) => {
+    if (block.block_type === "channel") {
+      return <Hash size={18} />;
+    } else if (block.block_type === "file") {
+      const fileType = block.content.file_type;
+      switch (fileType) {
+        case "pdf":
+          return <File size={18} />;
+        case "epub":
+          return <BookOpen size={18} />;
+        case "code":
+          return <FileCode size={18} />;
+        case "text":
+          return <FileText size={18} />;
+        default:
+          return <File size={18} />;
+      }
+    }
+    return <File size={18} />;
+  };
+
+  const getBlockTitle = (block: Block) => {
+    if (block.block_type === "channel") {
+      return block.content.title || `Channel ${block.id}`;
+    } else if (block.block_type === "file") {
+      return block.content.filename || `Block ${block.id}`;
+    }
+    return `Block ${block.id}`;
+  };
+
+  const getBlockSubtitle = (block: Block) => {
+    if (block.block_type === "channel") {
+      return block.content.description || "";
+    } else if (block.block_type === "file") {
+      return block.content.path || "";
+    }
+    return `Type: ${block.block_type}`;
+  };
+
+  const getBlockType = (block: Block) => {
+    if (block.block_type === "channel") {
+      return "CHANNEL";
+    } else if (block.block_type === "file") {
+      return (block.content.file_type || "FILE").toUpperCase();
+    }
+    return block.block_type.toUpperCase();
   };
 
   if (isLoading) {
@@ -315,7 +360,7 @@ const ChannelView: React.FC<ChannelViewProps> = ({
                   <X size={14} /> Delete
                 </button>
                 <button
-                  onClick={openAddFilesModal}
+                  onClick={openAddBlocksModal}
                   className="flex items-center gap-1 px-3 py-1.5 text-xs border border-zinc-800 hover:border-zinc-600"
                 >
                   <Plus size={14} /> Add Blocks
@@ -335,56 +380,48 @@ const ChannelView: React.FC<ChannelViewProps> = ({
         <div className="text-center p-8 border border-zinc-800">
           <p className="text-zinc-400 mb-4 text-sm">This channel is empty</p>
           <button
-            onClick={openAddFilesModal}
+            onClick={openAddBlocksModal}
             className="px-4 py-2 bg-white text-black text-xs font-medium"
           >
             Add your first block
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="flex flex-wrap gap-4">
           {blocks.map((block) => (
             <div
               key={block.id}
-              className="border border-zinc-800 overflow-hidden group relative aspect-square"
+              className="w-16 h-16 border border-zinc-800 group relative flex-shrink-0 cursor-pointer hover:border-zinc-600 transition-colors"
+              onClick={() => handleOpenBlock(block)}
             >
-              <div
-                className="p-4 h-full w-full cursor-pointer flex flex-col"
-                onClick={() => handleOpenFile(block.content.full_path)}
-              >
-                <div className="flex items-start gap-2 mb-2">
-                  <div className="p-2 bg-zinc-900">
-                    {getFileIcon(block.content.file_type)}
+              <div className="w-full h-full p-2 flex flex-col">
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-zinc-400">
+                    {getBlockIcon(block)}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-sm mb-1 truncate">
-                      {block.content.filename}
-                    </h3>
-                    <p className="text-xs text-zinc-500 truncate">
-                      {block.content.path}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex-grow"></div>
-                <div className="text-xs text-zinc-500 flex justify-between items-center">
-                  <span>{block.content.file_type.toUpperCase()}</span>
                 </div>
               </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  removeFileFromChannel(block.id);
+                  removeBlockFromChannel(block.id);
                 }}
-                className="absolute top-2 right-2 text-zinc-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-1 -right-1 w-4 h-4 bg-zinc-800 border border-zinc-600 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs"
               >
-                <X size={16} />
+                <X size={10} />
               </button>
+              
+              {/* Tooltip for block info */}
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-zinc-700 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                <div className="font-medium">{getBlockTitle(block)}</div>
+                <div className="text-zinc-400">{getBlockType(block)}</div>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Enhanced Multi-Select Add Files Modal */}
+      {/* Enhanced Multi-Select Add Blocks Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
           <div className="bg-black border border-zinc-800 p-6 max-w-3xl w-full">
@@ -398,45 +435,48 @@ const ChannelView: React.FC<ChannelViewProps> = ({
               </button>
             </div>
 
-            {availableFiles.length === 0 ? (
+            {availableBlocks.length === 0 ? (
               <div className="text-center p-8">
                 <p className="text-zinc-400 text-sm">
-                  No more files available to add
+                  No more blocks available to add
                 </p>
               </div>
             ) : (
               <div className="max-h-96 overflow-y-auto">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {availableFiles.map((file) => (
+                  {availableBlocks.map((block) => (
                     <div
-                      key={file.id}
+                      key={block.id}
                       className={`border ${
-                        selectedFileIds.has(file.id)
+                        selectedBlockIds.has(block.id)
                           ? "border-white bg-zinc-900"
                           : "border-zinc-800 hover:border-zinc-600"
                       } p-3 cursor-pointer transition-colors relative`}
-                      onClick={() => handleFileSelect(file.id)}
+                      onClick={() => handleBlockSelect(block.id)}
                     >
                       <div className="flex items-start gap-2">
                         <div
                           className={`p-1.5 ${
-                            selectedFileIds.has(file.id)
+                            selectedBlockIds.has(block.id)
                               ? "bg-white text-black"
                               : "bg-zinc-900"
                           }`}
                         >
-                          {selectedFileIds.has(file.id) ? (
+                          {selectedBlockIds.has(block.id) ? (
                             <Check size={16} />
                           ) : (
-                            getFileIcon(file.content.file_type)
+                            getBlockIcon(block)
                           )}
                         </div>
                         <div className="overflow-hidden">
                           <p className="font-medium text-sm truncate">
-                            {file.content.filename}
+                            {getBlockTitle(block)}
                           </p>
                           <p className="text-xs text-zinc-500 truncate">
-                            {file.content.path}
+                            {getBlockSubtitle(block)}
+                          </p>
+                          <p className="text-xs text-zinc-400 mt-1">
+                            {getBlockType(block)}
                           </p>
                         </div>
                       </div>
@@ -448,8 +488,8 @@ const ChannelView: React.FC<ChannelViewProps> = ({
 
             <div className="mt-6 flex justify-between items-center">
               <div className="text-sm text-zinc-400">
-                {selectedFileIds.size} block
-                {selectedFileIds.size !== 1 ? "s" : ""} selected
+                {selectedBlockIds.size} block
+                {selectedBlockIds.size !== 1 ? "s" : ""} selected
               </div>
               <div className="flex gap-2">
                 <button
@@ -459,21 +499,21 @@ const ChannelView: React.FC<ChannelViewProps> = ({
                   Cancel
                 </button>
                 <button
-                  onClick={addFilesToChannel}
-                  disabled={selectedFileIds.size === 0 || isAddingFiles}
+                  onClick={addBlocksToChannel}
+                  disabled={selectedBlockIds.size === 0 || isAddingBlocks}
                   className={`px-4 py-2 text-xs flex items-center gap-1 ${
-                    selectedFileIds.size > 0 && !isAddingFiles
+                    selectedBlockIds.size > 0 && !isAddingBlocks
                       ? "bg-white text-black"
                       : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                   }`}
                 >
-                  {isAddingFiles ? (
+                  {isAddingBlocks ? (
                     "Adding..."
                   ) : (
                     <>
-                      Add {selectedFileIds.size > 0 ? selectedFileIds.size : ""}{" "}
+                      Add {selectedBlockIds.size > 0 ? selectedBlockIds.size : ""}{" "}
                       Block
-                      {selectedFileIds.size !== 1 ? "s" : ""}
+                      {selectedBlockIds.size !== 1 ? "s" : ""}
                     </>
                   )}
                 </button>

@@ -2,37 +2,24 @@
 import React from "react";
 import { Block } from "../types";
 import { BrowserItem, BlockToBrowserItemConverter } from "../types/browser";
-import { File, FileCode, FileText, BookOpen, Hash } from "lucide-react";
+import { Hash } from "lucide-react";
+import { FileIconService } from "../utils/fileIcons";
 
 // Convert a file block to a browser item
 export const fileBlockToBrowserItem: BlockToBrowserItemConverter = (
   block: Block,
 ): BrowserItem => {
-  const getFileIcon = (fileType: string) => {
-    switch (fileType) {
-      case "pdf":
-        return <File className="text-zinc-400" />;
-      case "epub":
-        return <BookOpen className="text-zinc-400" />;
-      case "code":
-        return <FileCode className="text-zinc-400" />;
-      case "text":
-        return <FileText className="text-zinc-400" />;
-      default:
-        return <File className="text-zinc-400" />;
-    }
-  };
-
   return {
     id: block.id,
     title: block.content.filename || `File ${block.id}`,
     subtitle: block.content.path || "",
     type: block.content.file_type || "file",
-    icon: getFileIcon(block.content.file_type),
+    icon: FileIconService.getIcon(block.content.file_type, 18),
     createdAt: block.created_at,
     updatedAt: block.updated_at,
     metadata: {
       fullPath: block.content.full_path,
+      fileTypeConfig: FileIconService.getFileTypeConfig(block.content.file_type),
       ...block.content,
     },
   };
@@ -50,7 +37,10 @@ export const channelBlockToBrowserItem: BlockToBrowserItemConverter = (
     icon: <Hash className="text-zinc-400" />,
     createdAt: block.created_at,
     updatedAt: block.updated_at,
-    metadata: { ...block.content },
+    metadata: { 
+      connectionCount: block.connections?.length || 0,
+      ...block.content 
+    },
   };
 };
 
@@ -72,6 +62,39 @@ export const blockToBrowserItem: BlockToBrowserItemConverter = (
     type: block.block_type,
     createdAt: block.created_at,
     updatedAt: block.updated_at,
-    metadata: { ...block.content },
+    metadata: { 
+      blockType: block.block_type,
+      connectionCount: block.connections?.length || 0,
+      ...block.content 
+    },
   };
 };
+
+// Adapter factory for different block types
+export class BlockAdapterFactory {
+  private static converters = new Map<string, BlockToBrowserItemConverter>([
+    ["file", fileBlockToBrowserItem],
+    ["channel", channelBlockToBrowserItem],
+  ]);
+
+  static registerConverter(blockType: string, converter: BlockToBrowserItemConverter): void {
+    this.converters.set(blockType, converter);
+  }
+
+  static getConverter(blockType: string): BlockToBrowserItemConverter {
+    return this.converters.get(blockType) || blockToBrowserItem;
+  }
+
+  static convertBlock(block: Block): BrowserItem {
+    const converter = this.getConverter(block.block_type);
+    return converter(block);
+  }
+
+  static convertBlocks(blocks: Block[]): BrowserItem[] {
+    return blocks.map(block => this.convertBlock(block));
+  }
+
+  static getSupportedTypes(): string[] {
+    return Array.from(this.converters.keys());
+  }
+}

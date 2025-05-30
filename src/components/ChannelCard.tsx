@@ -24,9 +24,12 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
     return blocks.slice(0, 4);
   };
 
+  const previewBlocks = getPreviewBlocks(blocks);
+  const emptySlots = Math.max(0, 4 - blocks.length);
+
   return (
     <div
-      className="border border-zinc-800 overflow-hidden cursor-pointer hover:border-zinc-700 transition-colors"
+      className="border border-zinc-800 cursor-pointer hover:border-zinc-700 transition-colors"
       onClick={onClick}
     >
       <div className="flex p-6">
@@ -39,11 +42,13 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
             last edited {format(new Date(updatedAt), "MMMM d, yyyy")}
           </div>
         </div>
-        <div className="flex flex-grow gap-4 items-center">
-          {getPreviewBlocks(blocks).map((block) => (
+
+        {/* Preview Blocks Section */}
+        <div className="flex-1 flex items-center justify-between min-h-[64px]">
+          {previewBlocks.map((block) => (
             <div
               key={block.id}
-              className="bg-zinc-900 flex-1 h-64 flex items-center justify-center"
+              className="w-64 h-64 bg-zinc-900 flex items-center justify-center border border-zinc-800 flex-shrink-0"
             >
               {block.content.file_url ? (
                 <img
@@ -52,20 +57,16 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-zinc-800">
-                  <span className="text-zinc-500">···</span>
-                </div>
+                <span className="text-zinc-500 text-xs">···</span>
               )}
             </div>
           ))}
-          {Array.from({
-            length: Math.max(0, 4 - blocks.length),
-          }).map((_, index) => (
+          {Array.from({ length: emptySlots }).map((_, index) => (
             <div
               key={`empty-${index}`}
-              className="flex-1 h-64 flex items-center justify-center bg-zinc-800"
+              className="w-64 h-64 bg-zinc-800 flex items-center justify-center border border-zinc-700 flex-shrink-0"
             >
-              <span className="text-zinc-500 text-xl">···</span>
+              <span className="text-zinc-500 text-xs">···</span>
             </div>
           ))}
         </div>
