@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useTauri } from "../context/TauriContext";
 import { Block } from "../types";
+import { ChannelService, TauriChannelRepository } from "../services/channelService";
 import { format } from "date-fns";
 
 // We'll use this variable to access the Tauri shell API
@@ -28,14 +29,14 @@ const ChannelView: React.FC<ChannelViewProps> = ({
 }) => {
   const {
     isReady,
-    getBlock,
-    getBlocksInChannel,
     getAllFiles,
     connectBlocks,
     disconnectBlocks,
     updateBlockContent,
     deleteBlock,
   } = useTauri();
+
+  const channelService = new ChannelService(new TauriChannelRepository());
 
   const [channel, setChannel] = useState<Block | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -74,13 +75,13 @@ const ChannelView: React.FC<ChannelViewProps> = ({
 
     try {
       // Load channel data
-      const channelData = await getBlock(channelId);
+      const channelData = await channelService.get(channelId);
       setChannel(channelData);
       setEditedTitle(channelData.content.title || "");
       setEditedDescription(channelData.content.description || "");
 
       // Load blocks in this channel
-      const channelBlocks = await getBlocksInChannel(channelId);
+      const channelBlocks = await channelService.blocks(channelId);
       setBlocks(channelBlocks);
     } catch (err) {
       console.error("Failed to load channel:", err);

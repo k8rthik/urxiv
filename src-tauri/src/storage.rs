@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+use crate::error::{AppError, Result};
 use crate::models::Block;
 
 // Initialize application directories
-pub fn initialize_dirs(base_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+pub fn initialize_dirs(base_dir: &Path) -> Result<()> {
     let dirs = [base_dir, &base_dir.join("blocks")];
 
     for dir in dirs.iter() {
@@ -76,10 +77,10 @@ pub fn save_block(
     block: &Block,
     data_dir: &Path,
     cache: &mut HashMap<u64, Block>,
-) -> Result<(), String> {
+) -> Result<()> {
     let block_path = data_dir.join("blocks").join(format!("{}.json", block.id));
-    let json = serde_json::to_string_pretty(&block).map_err(|e| e.to_string())?;
-    fs::write(block_path, json).map_err(|e| e.to_string())?;
+    let json = serde_json::to_string_pretty(&block)?;
+    fs::write(block_path, json)?;
 
     // Update cache
     cache.insert(block.id, block.clone());

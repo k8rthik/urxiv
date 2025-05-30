@@ -153,7 +153,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ initialFiles }) => {
   };
 
   const handleBlockClick = (blockId: number) => {
-    console.log("Block clicked:", blockId);
     const clickedBlock = blocks.find((block) => block.id === blockId);
     if (clickedBlock && clickedBlock.block_type === "channel") {
       setSelectedChannelId(blockId);

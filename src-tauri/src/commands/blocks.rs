@@ -1,37 +1,39 @@
 use chrono::Utc;
+use serde_json::Value;
 use std::fs;
 use std::sync::atomic::Ordering;
 use tauri::State;
 
-use crate::models::{AppState, Block};
+use crate::error::{AppError, Result};
+use crate::models::{AppState, Block, BlockKind};
+use crate::repository::{BlockRepository, FileBlockRepository};
 use crate::storage;
 
 #[tauri::command]
-pub fn get_all_blocks(state: State<AppState>) -> Result<Vec<Block>, String> {
-    let blocks_cache = state.blocks_cache.lock().unwrap();
-    Ok(blocks_cache.values().cloned().collect())
+pub fn get_all_blocks(state: State<AppState>) -> Result<Vec<Block>> {
+    if let Some(repo) = &*state.repository.lock().unwrap() {
+        repo.all()
+    } else {
+        Ok(Vec::new())
+    }
 }
 
 #[tauri::command]
-pub fn get_all_files(state: State<AppState>) -> Result<Vec<Block>, String> {
-    let blocks_cache = state.blocks_cache.lock().unwrap();
-    let files: Vec<Block> = blocks_cache
-        .values()
-        .filter(|block| block.block_type == "file")
-        .cloned()
-        .collect();
-    Ok(files)
+pub fn get_all_files(state: State<AppState>) -> Result<Vec<Block>> {
+    if let Some(repo) = &*state.repository.lock().unwrap() {
+        repo.all_files()
+    } else {
+        Ok(Vec::new())
+    }
 }
 
 #[tauri::command]
-pub fn get_all_channels(state: State<AppState>) -> Result<Vec<Block>, String> {
-    let blocks_cache = state.blocks_cache.lock().unwrap();
-    let channels: Vec<Block> = blocks_cache
-        .values()
-        .filter(|block| block.block_type == "channel")
-        .cloned()
-        .collect();
-    Ok(channels)
+pub fn get_all_channels(state: State<AppState>) -> Result<Vec<Block>> {
+    if let Some(repo) = &*state.repository.lock().unwrap() {
+        repo.all_channels()
+    } else {
+        Ok(Vec::new())
+    }
 }
 
 #[tauri::command]
@@ -39,66 +41,43 @@ pub fn create_channel(
     title: String,
     description: String,
     state: State<AppState>,
-) -> Result<Block, String> {
-    let data_dir = match state.data_dir.lock().unwrap().clone() {
-        Some(dir) => dir,
-        None => return Err("No workspace selected".to_string()),
-    };
+) -> Result<Block> {
+    let mut repo_lock = state.repository.lock().unwrap();
+    let repo = repo_lock.as_mut().ok_or(AppError::NoWorkspaceSelected)?;
 
     let block_id = state.next_id.fetch_add(1, Ordering::SeqCst);
-    let now = Utc::now();
+    let block = Block::new_channel(block_id, title, description);
 
-    let content = serde_json::json!({
-        "title": title,
-        "description": description
-    });
-
-    let block = Block {
-        id: block_id,
-        created_at: now,
-        updated_at: now,
-        block_type: "channel".to_string(),
-        content,
-        connections: Vec::new(),
-    };
-
-    let mut blocks_cache = state.blocks_cache.lock().unwrap();
-    storage::save_block(&block, &data_dir, &mut blocks_cache)?;
+    repo.save(&block)?;
 
     Ok(block)
 }
 
 #[tauri::command]
-pub fn get_block(block_id: u64, state: State<AppState>) -> Result<Block, String> {
-    let blocks_cache = state.blocks_cache.lock().unwrap();
-
-    if let Some(block) = blocks_cache.get(&block_id) {
-        Ok(block.clone())
-    } else {
-        Err(format!("Block {} not found", block_id))
-    }
+pub fn get_block(block_id: u64, state: State<AppState>) -> Result<Block> {
+    let repo_lock = state.repository.lock().unwrap();
+    let repo = repo_lock.as_ref().ok_or(AppError::NoWorkspaceSelected)?;
+    repo.get(block_id)
 }
 
 #[tauri::command]
 pub fn get_blocks_in_channel(
     channel_id: u64,
     state: State<AppState>,
-) -> Result<Vec<Block>, String> {
-    let blocks_cache = state.blocks_cache.lock().unwrap();
+) -> Result<Vec<Block>> {
+    let repo_lock = state.repository.lock().unwrap();
+    let repo = repo_lock.as_ref().ok_or(AppError::NoWorkspaceSelected)?;
 
-    let channel = match blocks_cache.get(&channel_id) {
-        Some(block) => block,
-        None => return Err(format!("Channel {} not found", channel_id)),
-    };
+    let channel = repo.get(channel_id)?;
 
-    if channel.block_type != "channel" {
-        return Err(format!("Block {} is not a channel", channel_id));
+    if !matches!(channel.kind, BlockKind::Channel(_)) {
+        return Err(AppError::NotAChannel(channel_id));
     }
 
     let mut blocks = Vec::new();
     for &block_id in &channel.connections {
-        if let Some(block) = blocks_cache.get(&block_id) {
-            blocks.push(block.clone());
+        if let Ok(block) = repo.get(block_id) {
+            blocks.push(block);
         }
     }
 
@@ -111,30 +90,18 @@ pub fn connect_blocks(
     source_id: u64,
     target_id: u64,
     state: State<AppState>,
-) -> Result<(), String> {
-    let data_dir = match state.data_dir.lock().unwrap().clone() {
-        Some(dir) => dir,
-        None => return Err("No workspace selected".to_string()),
-    };
-
-    let mut blocks_cache = state.blocks_cache.lock().unwrap();
+) -> Result<()> {
+    let mut repo_lock = state.repository.lock().unwrap();
+    let repo = repo_lock.as_mut().ok_or(AppError::NoWorkspaceSelected)?;
 
     // Verify both blocks exist
-    if !blocks_cache.contains_key(&source_id) {
-        return Err(format!("Source block {} not found", source_id));
-    }
-
-    if !blocks_cache.contains_key(&target_id) {
-        return Err(format!("Target block {} not found", target_id));
-    }
-
-    // Update source block's connections
-    let mut source_block = blocks_cache.get(&source_id).unwrap().clone();
+    let mut source_block = repo.get(source_id)?;
+    repo.get(target_id)?;
 
     if !source_block.connections.contains(&target_id) {
         source_block.connections.push(target_id);
         source_block.updated_at = Utc::now();
-        storage::save_block(&source_block, &data_dir, &mut blocks_cache)?;
+        repo.save(&source_block)?;
     }
 
     Ok(())
@@ -145,21 +112,13 @@ pub fn disconnect_blocks(
     source_id: u64,
     target_id: u64,
     state: State<AppState>,
-) -> Result<(), String> {
-    let data_dir = match state.data_dir.lock().unwrap().clone() {
-        Some(dir) => dir,
-        None => return Err("No workspace selected".to_string()),
-    };
-
-    let mut blocks_cache = state.blocks_cache.lock().unwrap();
+) -> Result<()> {
+    let mut repo_lock = state.repository.lock().unwrap();
+    let repo = repo_lock.as_mut().ok_or(AppError::NoWorkspaceSelected)?;
 
     // Verify both blocks exist
-    if !blocks_cache.contains_key(&source_id) {
-        return Err(format!("Source block {} not found", source_id));
-    }
-
-    // Update source block's connections
-    let mut source_block = blocks_cache.get(&source_id).unwrap().clone();
+    let mut source_block = repo.get(source_id)?;
+    repo.get(target_id)?;
 
     if let Some(pos) = source_block
         .connections
@@ -168,33 +127,26 @@ pub fn disconnect_blocks(
     {
         source_block.connections.remove(pos);
         source_block.updated_at = Utc::now();
-        storage::save_block(&source_block, &data_dir, &mut blocks_cache)?;
+        repo.save(&source_block)?;
     }
 
     Ok(())
 }
 
 #[tauri::command]
-pub fn delete_block(block_id: u64, state: State<AppState>) -> Result<(), String> {
-    let data_dir = match state.data_dir.lock().unwrap().clone() {
-        Some(dir) => dir,
-        None => return Err("No workspace selected".to_string()),
-    };
-
-    let mut blocks_cache = state.blocks_cache.lock().unwrap();
+pub fn delete_block(block_id: u64, state: State<AppState>) -> Result<()> {
+    let mut repo_lock = state.repository.lock().unwrap();
+    let repo = repo_lock.as_mut().ok_or(AppError::NoWorkspaceSelected)?;
 
     // Verify the block exists
-    if !blocks_cache.contains_key(&block_id) {
-        return Err(format!("Block {} not found", block_id));
-    }
+    repo.get(block_id)?;
 
     // Remove this block from all connections in other blocks
-    for other_id in blocks_cache.keys().cloned().collect::<Vec<u64>>() {
-        if other_id == block_id {
+    let all_blocks = repo.all()?;
+    for mut other_block in all_blocks {
+        if other_block.id == block_id {
             continue;
         }
-
-        let mut other_block = blocks_cache.get(&other_id).unwrap().clone();
 
         if let Some(pos) = other_block
             .connections
@@ -203,47 +155,30 @@ pub fn delete_block(block_id: u64, state: State<AppState>) -> Result<(), String>
         {
             other_block.connections.remove(pos);
             other_block.updated_at = Utc::now();
-            storage::save_block(&other_block, &data_dir, &mut blocks_cache)?;
+            repo.save(&other_block)?;
         }
     }
 
-    // Delete the block file
-    let block_path = data_dir.join("blocks").join(format!("{}.json", block_id));
-    if block_path.exists() {
-        fs::remove_file(block_path).map_err(|e| e.to_string())?;
-    }
-
-    // Remove from cache
-    blocks_cache.remove(&block_id);
-
-    Ok(())
+    repo.delete(block_id)
 }
 
 #[tauri::command]
 pub fn update_block_content(
     block_id: u64,
-    new_content: serde_json::Value,
+    new_content: Value,
     state: State<AppState>,
-) -> Result<Block, String> {
-    let data_dir = match state.data_dir.lock().unwrap().clone() {
-        Some(dir) => dir,
-        None => return Err("No workspace selected".to_string()),
-    };
-
-    let mut blocks_cache = state.blocks_cache.lock().unwrap();
+) -> Result<Block> {
+    let mut repo_lock = state.repository.lock().unwrap();
+    let repo = repo_lock.as_mut().ok_or(AppError::NoWorkspaceSelected)?;
 
     // Verify the block exists
-    if !blocks_cache.contains_key(&block_id) {
-        return Err(format!("Block {} not found", block_id));
-    }
+    let mut block = repo.get(block_id)?;
 
-    let mut block = blocks_cache.get(&block_id).unwrap().clone();
-
-    // Update block content
-    block.content = new_content;
+    let new_kind: BlockKind = serde_json::from_value(new_content)?;
+    block.kind = new_kind;
     block.updated_at = Utc::now();
 
-    storage::save_block(&block, &data_dir, &mut blocks_cache)?;
+    repo.save(&block)?;
 
     Ok(block)
 }
